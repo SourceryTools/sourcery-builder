@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# Handle starting the execution of a build task.
+
+# Copyright 2018 Mentor Graphics Corporation.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 2.1 of the
+# License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this program; if not, see
+# <https://www.gnu.org/licenses/>.
+
+# If anything fails in this script, something is seriously broken
+# about the build (e.g. disk full) and it is reasonable to allow make
+# to fail rather than reporting back an error as a problem with a
+# particular task.
+
+set -e
+
+interp=$1
+build_script=$2
+top_build_dir=$3
+log=$4
+sockdir=$5
+message=$6
+
+if [ -f "$top_build_dir/build-failed" ]; then
+    # Another part of the build has failed, do nothing here.
+    exit 0
+fi
+
+cd "$top_build_dir"
+
+if [ -f "$log" ]; then
+    n=0
+    while [ -f "$log.$n" ]; do
+	n=$(($n + 1))
+    done
+    mv "$log" "$log.$n"
+fi
+
+exec >> "$log" 2>&1
+printf "Task execution starting at: "
+date
+
+"$interp" -s -E "$build_script" rpc-client "$sockdir" "$message"

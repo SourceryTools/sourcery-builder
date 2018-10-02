@@ -1,0 +1,59 @@
+Sourcery Builder is an experimental system for building and testing
+open source cross-compilation toolchains.  It is intended as a
+potential replacement for the existing system used internally at
+CodeSourcery / Mentor Graphics / Siemens, and builds on experience
+from that system.
+
+Sourcery Builder is licensed under the GNU Lesser General Public
+License, version 2.1 or later, and requires Python 3.5 or later.
+
+At present, Sourcery Builder is in the very early stages of
+development.  Most of the intended functionality is missing and it is
+not yet possible to use it for useful toolchain build and testing;
+some things are hardcoded that are only appropriate for initial
+prototype purposes.  Some key missing pieces are:
+
+* Various pieces needed for isolation from the environment and robust,
+  reproducible builds.
+
+* Producing source or binary packages (rather than just install trees
+  for the various parts of the toolchain built).
+
+* Running any toolchain testsuites.
+
+* Self-tests for some parts of the code ("sourcery-builder self-test"
+  exists, but only tests some modules).
+
+* Sanity checks in parts of the code.
+
+* Formatted documentation (docstrings exist, but are not yet set up
+  with reST formatting to produce overall documentation with Sphinx).
+
+* Features needed for building for more hosts than just the build
+  system.
+
+* Features needed for building the same component more than once for
+  the same host in different configurations (e.g. an offload
+  compiler).
+
+* Support for using parts of a toolchain that were previously built
+  rather than always building everything from source.
+
+* Component dependencies (rather than needing to add every used
+  component explicitly in the release configuration).
+
+* Generally most script and component features that are in the
+  existing internal system but have not yet been implemented for this
+  one, as not needed for an initial prototype demonstration.
+
+* Support for site-specific wrappers for this code, adding
+  site-specific components, commands and other functionality without
+  needing to change the core Sourcery Builder code (parts exist and
+  are used by the self-tests to test with test-only components set up
+  to exercise particular features, but not enough for some important
+  cases such as additional Component or Command methods added in the
+  wrappers that also need to exist for components or commands defined
+  in Sourcery Builder).
+
+* Any public feature roadmap or designs for missing features (some
+  notes exist, but are not public).

@@ -1,4 +1,4 @@
-# Initialize sourcery.selftests.commands package.
+# sourcery-builder null command for testing.
 
 # Copyright 2018 Mentor Graphics Corporation.
 
@@ -16,6 +16,22 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder selftests.commands package."""
+"""sourcery-builder null command for testing."""
 
-__all__ = ['null']
+import sourcery.command
+
+__all__ = ['Command']
+
+
+class Command(sourcery.command.Command):
+    """null command implementation."""
+
+    short_desc = 'Do nothing.'
+
+    @staticmethod
+    def add_arguments(parser):
+        pass
+
+    @staticmethod
+    def main(context, relcfg, args):
+        pass

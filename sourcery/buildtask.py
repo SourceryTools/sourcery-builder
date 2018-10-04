@@ -205,7 +205,7 @@ class BuildTask(object):
             self._implicit_define = {}
             self._install_provided = set()
         else:
-            self._fullname = parent._fullname+'/'+name
+            self._fullname = '%s/%s' % (parent._fullname, name)
             self._map = parent._map
             if name == '':
                 self.context.error('empty task name not at top level: %s'

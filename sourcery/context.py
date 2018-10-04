@@ -179,10 +179,9 @@ class ScriptContext(object):
             timestr = timestamp.strftime('[%H:%M:%S] ')
             print(timestr + message, file=self.message_file)
 
-    def inform_start(self):
+    def inform_start(self, argv):
         """Print a message about a script starting."""
-        self.inform('%s %s starting...' % (self.script_only,
-                                           ' '.join(sys.argv[1:])))
+        self.inform('%s %s starting...' % (self.script_only, ' '.join(argv)))
 
     def inform_end(self):
         """Print a message about a script ending."""
@@ -315,7 +314,7 @@ class ScriptContext(object):
         self.silent = args.silent
         self.verbose_messages = args.verbose
         self._set_script(args.cmd_name)
-        self.inform_start()
+        self.inform_start(argv)
         if 'release_config' in vars(args):
             relcfg = sourcery.relcfg.ReleaseConfig(self, args.release_config,
                                                    loader, args)

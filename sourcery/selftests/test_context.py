@@ -39,10 +39,6 @@ class ContextTestCase(unittest.TestCase):
         """Set up a context test."""
         self.context = ScriptContext()
         self.cwd = os.getcwd()
-        self.save_argv = sys.argv
-
-    def tearDown(self):
-        sys.argv = self.save_argv
 
     def test_add_common_options(self):
         """Test add_common_options."""
@@ -173,8 +169,7 @@ class ContextTestCase(unittest.TestCase):
     def test_inform_start(self):
         """Test ScriptContext.inform_start."""
         self.context.message_file = io.StringIO()
-        sys.argv = ['cmd', 'arg1', 'arg2']
-        self.context.inform_start()
+        self.context.inform_start(['arg1', 'arg2'])
         output = self.context.message_file.getvalue()
         self.assertIn('%s arg1 arg2 starting...' % self.context.script_only,
                       output)

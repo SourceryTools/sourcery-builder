@@ -1,4 +1,4 @@
-# Initialize sourcery.selftests.commands package.
+# sourcery-builder reexec-relcfg command for testing.
 
 # Copyright 2018 Mentor Graphics Corporation.
 
@@ -16,6 +16,26 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder selftests.commands package."""
+"""sourcery-builder reexec-relcfg command for testing."""
 
-__all__ = ['generic', 'null', 'reexec', 'reexec_relcfg']
+import sourcery.command
+import sourcery.relcfg
+
+__all__ = ['Command']
+
+
+class Command(sourcery.command.Command):
+    """reexec-relcfg command implementation."""
+
+    short_desc = 'Test re-execution.'
+
+    check_script = True
+
+    @staticmethod
+    def add_arguments(parser):
+        sourcery.relcfg.add_release_config_arg(parser)
+
+    @staticmethod
+    def main(context, relcfg, args):
+        context.called_with_relcfg = relcfg
+        context.called_with_args = args

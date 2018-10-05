@@ -31,6 +31,7 @@ import unittest
 import unittest.mock
 
 from sourcery.context import add_common_options, ScriptError, ScriptContext
+from sourcery.relcfg import ReleaseConfigTextLoader
 
 __all__ = ['ContextTestCase']
 
@@ -697,3 +698,113 @@ class ContextTestCase(unittest.TestCase):
         context.main(None, ['reexec', 'arg1'])
         context.setlocale.assert_called_with(locale.LC_ALL, 'C')
         context.execve.assert_not_called()
+        # Test commands using release configs.
+        context.setlocale.reset_mock()
+        context.execve.reset_mock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.source_type.set("none")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        context.main(ReleaseConfigTextLoader(), ['reexec-relcfg', relcfg_text])
+        context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.execve.assert_not_called()
+        self.assertEqual(context.called_with_relcfg.build.get().name,
+                         'x86_64-linux-gnu')
+        self.assertEqual(context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        self.assertEqual(context.script_full, context.orig_script_full)
+        self.assertEqual(context.interp, sys.executable)
+        # Test release config setting environment variables.
+        context.setlocale.reset_mock()
+        context.execve.reset_mock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.source_type.set("none")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.env_set.set({"OTHER": "rc-other"})\n')
+        context.main(ReleaseConfigTextLoader(), ['reexec-relcfg', relcfg_text])
+        context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.execve.assert_not_called()
+        self.assertEqual(context.called_with_relcfg.build.get().name,
+                         'x86_64-linux-gnu')
+        self.assertEqual(context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path',
+                          'OTHER': 'rc-other'})
+        self.assertEqual(context.script_full, context.orig_script_full)
+        self.assertEqual(context.interp, sys.executable)
+        # Test release config forcing re-exec by setting script_full.
+        context.setlocale.reset_mock()
+        context.execve.reset_mock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.source_type.set("none")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.script_full.set("%s-other")\n'
+                       % context.script_full)
+        context.main(ReleaseConfigTextLoader(), ['reexec-relcfg', relcfg_text])
+        context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.execve.assert_called_once_with(
+            context.interp,
+            context.script_command() + ['reexec-relcfg', relcfg_text],
+            context.environ)
+        self.assertEqual(context.called_with_relcfg.build.get().name,
+                         'x86_64-linux-gnu')
+        self.assertEqual(context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        self.assertEqual(context.script_full,
+                         '%s-other' % context.orig_script_full)
+        self.assertEqual(context.interp, sys.executable)
+        context.script_full = context.orig_script_full
+        # Test release config forcing re-exec by setting interp.
+        context.setlocale.reset_mock()
+        context.execve.reset_mock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.source_type.set("none")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.interp.set("%s-other")\n'
+                       % context.interp)
+        context.main(ReleaseConfigTextLoader(), ['reexec-relcfg', relcfg_text])
+        context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.execve.assert_called_once_with(
+            context.interp,
+            context.script_command() + ['reexec-relcfg', relcfg_text],
+            context.environ)
+        self.assertEqual(context.called_with_relcfg.build.get().name,
+                         'x86_64-linux-gnu')
+        self.assertEqual(context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        self.assertEqual(context.script_full, context.orig_script_full)
+        self.assertEqual(context.interp, '%s-other' % sys.executable)

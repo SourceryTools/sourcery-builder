@@ -19,16 +19,54 @@
 """Test sourcery.context."""
 
 import argparse
+import contextlib
 import io
 import locale
 import os
 import os.path
+import subprocess
 import sys
+import tempfile
 import unittest
+import unittest.mock
 
 from sourcery.context import add_common_options, ScriptError, ScriptContext
 
 __all__ = ['ContextTestCase']
+
+
+@contextlib.contextmanager
+def _with_dup(old_fd):
+    """Open a file descriptor with dup that is automatically closed."""
+    new_fd = os.dup(old_fd)
+    try:
+        yield new_fd
+    finally:
+        os.close(new_fd)
+
+
+@contextlib.contextmanager
+def _with_open(*args, **kwargs):
+    """Open a file descriptor with open that is automatically closed."""
+    new_fd = os.open(*args, **kwargs)
+    try:
+        yield new_fd
+    finally:
+        os.close(new_fd)
+
+
+@contextlib.contextmanager
+def _redirect_file(file, name):
+    """Redirect output to a file for code in a 'with' statement."""
+    file.flush()
+    with _with_dup(file.fileno()) as old_out_fd:
+        with _with_open(name,
+                        os.O_WRONLY | os.O_CREAT | os.O_TRUNC) as new_out_fd:
+            try:
+                os.dup2(new_out_fd, file.fileno())
+                yield
+            finally:
+                os.dup2(old_out_fd, file.fileno())
 
 
 class ContextTestCase(unittest.TestCase):
@@ -39,6 +77,32 @@ class ContextTestCase(unittest.TestCase):
         """Set up a context test."""
         self.context = ScriptContext()
         self.cwd = os.getcwd()
+        self.tempdir_td = tempfile.TemporaryDirectory()
+        self.tempdir = self.tempdir_td.name
+
+    def tearDown(self):
+        self.tempdir_td.cleanup()
+
+    def temp_file(self, name):
+        """Return the name of a temporary file for a test."""
+        return os.path.join(self.tempdir, name)
+
+    @contextlib.contextmanager
+    def redirect_stdout_stderr(self):
+        """Redirect stdout and stderr for code in a 'with' statement."""
+        with _redirect_file(sys.stdout, self.temp_file('stdout')):
+            with _redirect_file(sys.stderr, self.temp_file('stderr')):
+                yield
+
+    def temp_file_read(self, name):
+        """Read a file in tempdir for this test."""
+        with open(self.temp_file(name), 'r', encoding='utf-8') as file:
+            return file.read()
+
+    def msg_stdout_stderr_read(self):
+        """Read the redirected messages, stdout and stderr for this test."""
+        return (self.context.message_file.getvalue(),
+                self.temp_file_read('stdout'), self.temp_file_read('stderr'))
 
     def test_add_common_options(self):
         """Test add_common_options."""
@@ -165,6 +229,11 @@ class ContextTestCase(unittest.TestCase):
         output = self.context.message_file.getvalue()
         self.assertIn('test message', output)
         self.assertRegex(output, r'^\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] ')
+        self.context.silent = True
+        self.context.message_file = io.StringIO()
+        self.context.inform('test message')
+        output = self.context.message_file.getvalue()
+        self.assertEqual(output, '')
 
     def test_inform_start(self):
         """Test ScriptContext.inform_start."""
@@ -174,6 +243,11 @@ class ContextTestCase(unittest.TestCase):
         self.assertIn('%s arg1 arg2 starting...' % self.context.script_only,
                       output)
         self.assertRegex(output, r'^\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] ')
+        self.context.silent = True
+        self.context.message_file = io.StringIO()
+        self.context.inform_start(['arg1', 'arg2'])
+        output = self.context.message_file.getvalue()
+        self.assertEqual(output, '')
 
     def test_inform_end(self):
         """Test ScriptContext.inform_end."""
@@ -182,6 +256,11 @@ class ContextTestCase(unittest.TestCase):
         output = self.context.message_file.getvalue()
         self.assertIn('... %s complete.' % self.context.script, output)
         self.assertRegex(output, r'^\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] ')
+        self.context.silent = True
+        self.context.message_file = io.StringIO()
+        self.context.inform_end()
+        output = self.context.message_file.getvalue()
+        self.assertEqual(output, '')
 
     def test_verbose(self):
         """Test ScriptContext.verbose."""
@@ -209,3 +288,412 @@ class ContextTestCase(unittest.TestCase):
         """Test ScriptContext.error."""
         self.assertRaisesRegex(ScriptError, 'test error message',
                                self.context.error, 'test error message')
+
+    def test_execute(self):
+        """Test ScriptContext.execute."""
+        # Ordinary execution.
+        self.context.message_file = io.StringIO()
+        with self.redirect_stdout_stderr():
+            self.context.execute(['sh', '-c', 'echo a; echo b >&2'])
+        output, stdout, stderr = self.msg_stdout_stderr_read()
+        self.assertEqual(output, "sh -c 'echo a; echo b >&2'\n")
+        self.assertEqual(stdout, 'a\n')
+        self.assertEqual(stderr, 'b\n')
+        # Making the subprocess silent.
+        self.context.message_file = io.StringIO()
+        self.context.execute_silent = True
+        with self.redirect_stdout_stderr():
+            self.context.execute(['sh', '-c', 'echo a; echo b >&2'])
+        output, stdout, stderr = self.msg_stdout_stderr_read()
+        self.assertEqual(output, "sh -c 'echo a; echo b >&2'\n")
+        self.assertEqual(stdout, '')
+        self.assertEqual(stderr, '')
+        # Specifying a working directory.
+        self.context.message_file = io.StringIO()
+        self.context.execute_silent = False
+        with self.redirect_stdout_stderr():
+            self.context.execute(['sh', '-c', 'echo *'], cwd=self.tempdir)
+        output, stdout, stderr = self.msg_stdout_stderr_read()
+        self.assertEqual(output, ("pushd %s; sh -c 'echo *'; popd\n"
+                                  % self.tempdir))
+        self.assertEqual(stdout, 'stderr stdout\n')
+        self.assertEqual(stderr, '')
+        # Not printing the command run.
+        self.context.message_file = io.StringIO()
+        self.context.silent = True
+        with self.redirect_stdout_stderr():
+            self.context.execute(['sh', '-c', 'echo *'], cwd=self.tempdir)
+        output, stdout, stderr = self.msg_stdout_stderr_read()
+        self.assertEqual(output, '')
+        self.assertEqual(stdout, 'stderr stdout\n')
+        self.assertEqual(stderr, '')
+        # Using environment variables.
+        self.context.message_file = io.StringIO()
+        self.context.environ = dict(self.context.environ)
+        self.context.environ['TEST'] = self.tempdir
+        with self.redirect_stdout_stderr():
+            self.context.execute(['sh', '-c', 'echo $TEST'])
+        output, stdout, stderr = self.msg_stdout_stderr_read()
+        self.assertEqual(output, '')
+        self.assertEqual(stdout, '%s\n' % self.tempdir)
+        self.assertEqual(stderr, '')
+        # Errors from execute.
+        self.assertRaises(subprocess.CalledProcessError, self.context.execute,
+                          ['false'])
+        self.assertRaises(OSError, self.context.execute, ['true'],
+                          cwd=self.temp_file('no-such-directory'))
+
+    def test_script_command(self):
+        """Test ScriptContext.script_command."""
+        # We can't test much more than repeating the function's logic.
+        self.assertEqual(self.context.script_command(),
+                         [self.context.interp, '-s', '-E',
+                          self.context.script_full])
+
+    def test_exec_self(self):
+        """Test ScriptContext.exec_self."""
+        # We can't test much more than repeating the function's logic.
+        self.context.execve = unittest.mock.MagicMock()
+        argv = ['arg1', 'arg2']
+        self.context.exec_self(argv)
+        self.context.execve.assert_called_once_with(
+            self.context.interp, self.context.script_command() + argv,
+            self.context.environ)
+
+    def test_clean_environment(self):
+        """Test ScriptContext.clean_environment."""
+        self.context.setlocale = unittest.mock.MagicMock()
+        self.context.flags = unittest.mock.MagicMock()
+        self.context.flags.no_user_site = False
+        self.context.flags.ignore_environment = False
+        self.context.execve = unittest.mock.MagicMock()
+        # Basic test.
+        test_env = {'HOME': 'test-home',
+                    'LOGNAME': 'test-logname',
+                    'TERM': 'test-term',
+                    'USER': 'test-user',
+                    'LANG': 'test-lang',
+                    'PATH': 'test-path',
+                    'PYTHONTEST': 'test-python',
+                    'OTHER': 'test-other',
+                    'OTHER2': 'test-other2'}
+        argv = ['arg1']
+        self.context.environ = dict(test_env)
+        self.context.clean_environment(argv)
+        self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.execve.assert_not_called()
+        self.assertEqual(self.context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        # Test with re-execution enabled.
+        self.context.setlocale.reset_mock()
+        self.context.execve.reset_mock()
+        self.context.environ = dict(test_env)
+        self.context.clean_environment(argv, reexec=True)
+        self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.execve.assert_called_once_with(
+            self.context.interp, self.context.script_command() + argv,
+            self.context.environ)
+        self.assertEqual(self.context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        # Test with extra variables specified.
+        self.context.setlocale.reset_mock()
+        self.context.execve.reset_mock()
+        self.context.environ = dict(test_env)
+        self.context.clean_environment(
+            argv,
+            extra_vars={'OTHER': 'mod-other',
+                        'EXTRA': 'mod-extra',
+                        'PATH': 'mod-path',
+                        'LD_LIBRARY_PATH': 'mod-ld-library-path'},
+            reexec=True)
+        self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.execve.assert_called_once_with(
+            self.context.interp, self.context.script_command() + argv,
+            self.context.environ)
+        self.assertEqual(self.context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'mod-path',
+                          'LD_LIBRARY_PATH': 'mod-ld-library-path',
+                          'OTHER': 'mod-other',
+                          'EXTRA': 'mod-extra'})
+        # Test case not needing re-execution.
+        self.context.setlocale.reset_mock()
+        self.context.execve.reset_mock()
+        self.context.environ = dict(test_env)
+        self.context.flags.no_user_site = True
+        self.context.flags.ignore_environment = True
+        self.context.clean_environment(argv, reexec=True)
+        self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.execve.assert_not_called()
+        self.assertEqual(self.context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        # Re-execution needed if no_user_site is False.
+        self.context.setlocale.reset_mock()
+        self.context.execve.reset_mock()
+        self.context.environ = dict(test_env)
+        self.context.flags.no_user_site = False
+        self.context.clean_environment(argv, reexec=True)
+        self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.execve.assert_called_once_with(
+            self.context.interp, self.context.script_command() + argv,
+            self.context.environ)
+        self.assertEqual(self.context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        # Re-execution needed if ignore_environment is False.
+        self.context.setlocale.reset_mock()
+        self.context.execve.reset_mock()
+        self.context.environ = dict(test_env)
+        self.context.flags.no_user_site = True
+        self.context.flags.ignore_environment = False
+        self.context.clean_environment(argv, reexec=True)
+        self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.execve.assert_called_once_with(
+            self.context.interp, self.context.script_command() + argv,
+            self.context.environ)
+        self.assertEqual(self.context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        # Re-execution not needed if ignore_environment is False but
+        # there are no PYTHON* variables.
+        self.context.setlocale.reset_mock()
+        self.context.execve.reset_mock()
+        self.context.environ = dict(test_env)
+        del self.context.environ['PYTHONTEST']
+        self.context.clean_environment(argv, reexec=True)
+        self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.execve.assert_not_called()
+        self.assertEqual(self.context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        # Re-execution needed if different interpreter wanted.
+        self.context.setlocale.reset_mock()
+        self.context.execve.reset_mock()
+        self.context.environ = dict(test_env)
+        self.context.flags.no_user_site = True
+        self.context.flags.ignore_environment = True
+        self.context.interp = sys.executable + '-other'
+        self.context.clean_environment(argv, reexec=True)
+        self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.execve.assert_called_once_with(
+            self.context.interp, self.context.script_command() + argv,
+            self.context.environ)
+        self.assertEqual(self.context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        # Re-execution needed if different script wanted.
+        self.context.setlocale.reset_mock()
+        self.context.execve.reset_mock()
+        self.context.environ = dict(test_env)
+        self.context.interp = sys.executable
+        self.context.script_full = self.context.orig_script_full + '-other'
+        self.context.clean_environment(argv, reexec=True)
+        self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.execve.assert_called_once_with(
+            self.context.interp, self.context.script_command() + argv,
+            self.context.environ)
+        self.assertEqual(self.context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+
+    def test_main(self):
+        """Test ScriptContext.main."""
+        context = ScriptContext(['sourcery.selftests'])
+        context.setlocale = unittest.mock.MagicMock()
+        context.flags = unittest.mock.MagicMock()
+        context.flags.no_user_site = False
+        context.flags.ignore_environment = False
+        context.execve = unittest.mock.MagicMock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        test_env = {'HOME': 'test-home',
+                    'LOGNAME': 'test-logname',
+                    'TERM': 'test-term',
+                    'USER': 'test-user',
+                    'LANG': 'test-lang',
+                    'PATH': 'test-path',
+                    'PYTHONTEST': 'test-python',
+                    'OTHER': 'test-other',
+                    'OTHER2': 'test-other2'}
+        context.environ = dict(test_env)
+        # Test generic command execution, no release config.
+        context.message_file = io.StringIO()
+        context.main(None, ['-i', 'instarg', 'generic', 'arg1'])
+        self.assertFalse(context.silent)
+        self.assertFalse(context.verbose_messages)
+        self.assertEqual(context.script, '%s generic' % context.script_only)
+        self.assertIsNone(context.called_with_relcfg)
+        self.assertEqual(context.called_with_args.extra, 'arg1')
+        self.assertEqual(context.called_with_args.toplevelprefix,
+                         os.path.join(self.cwd, 'instarg'))
+        self.assertEqual(context.called_with_args.logdir,
+                         os.path.join(self.cwd, 'logs'))
+        self.assertEqual(context.called_with_args.objdir,
+                         os.path.join(self.cwd, 'obj'))
+        self.assertEqual(context.called_with_args.pkgdir,
+                         os.path.join(self.cwd, 'pkg'))
+        self.assertEqual(context.called_with_args.srcdir,
+                         os.path.join(self.cwd, 'src'))
+        self.assertEqual(context.called_with_args.testlogdir,
+                         os.path.join(self.cwd, 'testlogs'))
+        self.assertFalse(context.called_with_args.verbose)
+        self.assertFalse(context.called_with_args.silent)
+        output = context.message_file.getvalue()
+        self.assertIn('%s -i instarg generic arg1 starting...'
+                      % context.script_only,
+                      output)
+        self.assertIn('... %s complete.' % context.script, output)
+        self.assertRegex(output,
+                         r'^\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] '
+                         r'.* -i instarg generic arg1 starting\.\.\.\n'
+                         r'\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] '
+                         r'\.\.\..*complete\.\n\Z')
+        context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.execve.assert_not_called()
+        self.assertEqual(context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        # Test --silent.
+        context.setlocale.reset_mock()
+        context.execve.reset_mock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        context.message_file = io.StringIO()
+        context.main(None, ['--silent', 'generic', 'arg1'])
+        self.assertTrue(context.silent)
+        self.assertFalse(context.verbose_messages)
+        self.assertEqual(context.script, '%s generic' % context.script_only)
+        self.assertIsNone(context.called_with_relcfg)
+        self.assertEqual(context.called_with_args.extra, 'arg1')
+        self.assertFalse(context.called_with_args.verbose)
+        self.assertTrue(context.called_with_args.silent)
+        output = context.message_file.getvalue()
+        self.assertEqual(output, '')
+        context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.execve.assert_not_called()
+        self.assertEqual(context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        # Test -v.
+        context.setlocale.reset_mock()
+        context.execve.reset_mock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        context.main(None, ['-v', 'generic', 'arg1'])
+        self.assertFalse(context.silent)
+        self.assertTrue(context.verbose_messages)
+        self.assertEqual(context.script, '%s generic' % context.script_only)
+        self.assertIsNone(context.called_with_relcfg)
+        self.assertEqual(context.called_with_args.extra, 'arg1')
+        self.assertTrue(context.called_with_args.verbose)
+        self.assertFalse(context.called_with_args.silent)
+        context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.execve.assert_not_called()
+        self.assertEqual(context.environ,
+                         {'HOME': 'test-home',
+                          'LOGNAME': 'test-logname',
+                          'TERM': 'test-term',
+                          'USER': 'test-user',
+                          'LANG': 'C',
+                          'LC_ALL': 'C',
+                          'PATH': 'test-path'})
+        # Test description used for top-level --help.
+        context.setlocale.reset_mock()
+        context.execve.reset_mock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        help_out = io.StringIO()
+        with contextlib.redirect_stdout(help_out):
+            self.assertRaises(SystemExit, context.main, None, ['--help'])
+        help_text = help_out.getvalue()
+        self.assertRegex(help_text, r'generic *Save argument information\.')
+        # Test descriptions used for sub-command --help.
+        context.setlocale.reset_mock()
+        context.execve.reset_mock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        help_out = io.StringIO()
+        with contextlib.redirect_stdout(help_out):
+            self.assertRaises(SystemExit, context.main, None,
+                              ['generic', '--help'])
+        help_text = help_out.getvalue()
+        self.assertIn('Save argument information.', help_text)
+        self.assertTrue(help_text.endswith('Additional description.\n'))
+        # Test re-exec when requested by check_script.
+        context.setlocale.reset_mock()
+        context.execve.reset_mock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        context.main(None, ['reexec', 'arg1'])
+        context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.execve.assert_called_once_with(
+            context.interp,
+            context.script_command() + ['reexec', 'arg1'],
+            context.environ)
+        # Test re-exec not done when not needed.
+        context.setlocale.reset_mock()
+        context.execve.reset_mock()
+        context.flags.no_user_site = True
+        context.flags.ignore_environment = True
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        context.main(None, ['reexec', 'arg1'])
+        context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.execve.assert_not_called()

@@ -1,4 +1,4 @@
-# Initialize sourcery.selftests.commands package.
+# sourcery-builder generic command for testing.
 
 # Copyright 2018 Mentor Graphics Corporation.
 
@@ -16,6 +16,25 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder selftests.commands package."""
+"""sourcery-builder generic command for testing."""
 
-__all__ = ['generic', 'null', 'reexec']
+import sourcery.command
+
+__all__ = ['Command']
+
+
+class Command(sourcery.command.Command):
+    """generic command implementation."""
+
+    short_desc = 'Save argument information.'
+
+    long_desc = 'Additional description.'
+
+    @staticmethod
+    def add_arguments(parser):
+        parser.add_argument('extra')
+
+    @staticmethod
+    def main(context, relcfg, args):
+        context.called_with_relcfg = relcfg
+        context.called_with_args = args

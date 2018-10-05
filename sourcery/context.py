@@ -137,6 +137,9 @@ class ScriptContext(object):
             load_list.extend(extra)
         self._load_commands(load_list)
         self._load_components(load_list)
+        # Set by tests only, otherwise unused.
+        self.called_with_args = None
+        self.called_with_relcfg = None
 
     def _load_commands(self, package_list):
         """Load the modules for all sourcery-builder commands."""

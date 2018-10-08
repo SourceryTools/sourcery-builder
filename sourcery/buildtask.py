@@ -203,6 +203,7 @@ class BuildTask(object):
             self._implicit_define = {}
             self._install_provided = set()
         else:
+            parent._require_not_finalized('__init__')
             self._fullname = '%s/%s' % (parent._fullname, name)
             self._map = parent._map
             if name == '':
@@ -224,9 +225,28 @@ class BuildTask(object):
         self._depends = set()
         self._depends_install = set()
         self._provides_install = set()
+        # The following are set at finalization, for tasks with
+        # commands in the case of _number and for all tasks in the
+        # case of _finalized.
         self._number = None
+        self._finalized = False
+        # The following are set at finalization, on the top-level task
+        # only, and are not meaningful for other tasks.
+        self._top_deps = None
+        self._top_deps_list = None
+        self._top_num_tasks = None
         if parent is not None:
             parent._add_subtask(self)
+
+    def _require_finalized(self, func):
+        """Require a function to be called only after finalization."""
+        if not self._finalized:
+            self.context.error('%s called before finalization' % func)
+
+    def _require_not_finalized(self, func):
+        """Require a function to be called only before finalization."""
+        if self._finalized:
+            self.context.error('%s called after finalization' % func)
 
     def _add_subtask(self, subtask):
         """Add a subtask to this task.
@@ -236,6 +256,7 @@ class BuildTask(object):
         need to call this function directly.
 
         """
+        self._require_not_finalized('_add_subtask')
         if self._commands:
             self.context.error('task %s has both commands or Python steps '
                                'and subtasks' % self._fullname)
@@ -248,6 +269,7 @@ class BuildTask(object):
 
     def add_command(self, command, cwd=None):
         """Add a command to this task."""
+        self._require_not_finalized('add_command')
         if self._subtasks:
             self.context.error('task %s has both commands and subtasks'
                                % self._fullname)
@@ -258,6 +280,7 @@ class BuildTask(object):
 
     def add_python(self, py_func, py_args):
         """Add a Python step to this task."""
+        self._require_not_finalized('add_python')
         if self._subtasks:
             self.context.error('task %s has both Python steps and subtasks'
                                % self._fullname)
@@ -268,6 +291,7 @@ class BuildTask(object):
 
     def add_empty_dir(self, directory):
         """Add commands to this task to remove and recreate a directory."""
+        self._require_not_finalized('add_empty_dir')
         self.add_command(['rm', '-rf', directory])
         self.add_command(['mkdir', '-p', directory])
 
@@ -276,11 +300,13 @@ class BuildTask(object):
         parent.
 
         """
+        self._require_not_finalized('add_empty_dir_parent')
         self.add_command(['rm', '-rf', directory])
         self.add_command(['mkdir', '-p', os.path.dirname(directory)])
 
     def add_make(self, command, cwd):
         """Add a 'make' command to this task."""
+        self._require_not_finalized('add_make')
         if self._subtasks:
             self.context.error('task %s has both commands and subtasks'
                                % self._fullname)
@@ -298,6 +324,7 @@ class BuildTask(object):
         prepended to in the same task.
 
         """
+        self._require_not_finalized('env_set')
         if '=' in var or '\n' in var or '\n' in value:
             self.context.error('bad character in environment variable '
                                'setting %s=%s' % (var, value))
@@ -315,6 +342,7 @@ class BuildTask(object):
         not both be set and prepended to in the same task.
 
         """
+        self._require_not_finalized('env_prepend')
         if '=' in var or '\n' in var or '\n' in value or ':' in value:
             self.context.error('bad character in environment variable '
                                'setting %s prepending %s' % (var, value))
@@ -347,10 +375,12 @@ class BuildTask(object):
 
     def depend(self, dep_name):
         """Add a dependency on another task, by name."""
+        self._require_not_finalized('depend')
         self._depends.add(dep_name)
 
     def depend_install(self, dep_host, dep_name):
         """Add a dependency on an install tree, by host and name."""
+        self._require_not_finalized('depend_install')
         self._depends_install.add((dep_host, dep_name))
 
     def _provide_install_main(self, prov_host, prov_name):
@@ -361,6 +391,7 @@ class BuildTask(object):
         tree, as is it used for tasks creating such implicit trees.
 
         """
+        self._require_not_finalized('_provide_install_main')
         prov_tuple = (prov_host, prov_name)
         if prov_tuple in self._install_provided:
             self.context.error('install tree %s/%s already provided'
@@ -370,6 +401,7 @@ class BuildTask(object):
 
     def provide_install(self, prov_host, prov_name):
         """Mark this task as providing an install tree."""
+        self._require_not_finalized('provide_install')
         prov_tuple = (prov_host, prov_name)
         if prov_tuple in self._implicit_declare:
             self.context.error('install tree %s/%s already declared'
@@ -392,6 +424,7 @@ class BuildTask(object):
         top-level task.
 
         """
+        self._require_not_finalized('declare_implicit_install')
         tree_tuple = (host, name)
         if tree_tuple in self._implicit_declare:
             self.context.error('install tree %s/%s already declared'
@@ -414,6 +447,7 @@ class BuildTask(object):
         top-level task.
 
         """
+        self._require_not_finalized('contribute_implicit_install')
         tree_tuple = (host, name)
         if tree_tuple in self._implicit_define:
             self.context.error('install tree %s/%s already defined'
@@ -438,6 +472,7 @@ class BuildTask(object):
         top-level task.
 
         """
+        self._require_not_finalized('define_implicit_install')
         tree_tuple = (host, name)
         if tree_tuple in self._implicit_declare:
             self.context.error('install tree %s/%s already declared'
@@ -497,6 +532,7 @@ class BuildTask(object):
 
     def add_makefile_commands(self, makefile, build_context, num_tasks):
         """Add makefile commands for building this task."""
+        self._require_finalized('add_makefile_commands')
         context = self.context
         server = build_context.server
         if self._commands:
@@ -526,12 +562,14 @@ class BuildTask(object):
     def _create_implicit_install_tasks(self):
         """Create tasks for implicitly created install trees.
 
-        This function should be called only for the top-level task.
+        This function should be called only for the top-level task,
+        only from the finalize function.
 
         """
         if self._fullname != '':
             self.context.error('_create_implicit_install_tasks called for '
                                'non-top-level task %s' % self._fullname)
+        self._require_not_finalized('_create_implicit_install_tasks')
         for host_name in sorted(self._implicit_contribute.keys(),
                                 key=_install_tree_key):
             if host_name not in self._implicit_declare:
@@ -559,31 +597,57 @@ class BuildTask(object):
             task.add_empty_dir_parent(path)
             task.add_python(tree.export, [path])
 
-    def makefile_text(self, build_context):
-        """Return makefile text for build_context for building this task.
+    def finalize(self):
+        """Finalize this task.
 
-        This function should be called only for the top-level task.
+        This function should be called only for the top-level task;
+        calling it more than once has the same effect as calling it
+        once.  Finalization prevents any commands or dependencies
+        being added to any task afterwards, creates tasks for
+        implicitly created install trees, and assigns task numbers to
+        tasks.
 
         """
         if self._fullname != '':
-            self.context.error('makefile_text called for non-top-level '
-                               'task %s' % self._fullname)
+            self.context.error('finalize called for non-top-level task %s'
+                               % self._fullname)
+        if self._finalized:
+            return
         self._create_implicit_install_tasks()
-        deps = {}
-        self.record_deps(deps)
-        deps_list = sourcery.tsort.tsort(self.context, deps)
-        makefile = sourcery.makefile.Makefile(self.context, 'all')
+        self._top_deps = {}
+        self.record_deps(self._top_deps)
+        self._top_deps_list = sourcery.tsort.tsort(self.context,
+                                                   self._top_deps)
         task_number = 1
-        for target in deps_list:
-            makefile.add_target(target)
+        for target in self._top_deps_list:
             if target.startswith(_TASK_END_STR):
                 t_name = target[len(_TASK_END_STR):]
                 t_task = self._map[t_name]
                 if t_task._commands:
                     t_task._number = task_number
                     task_number += 1
+        self._top_num_tasks = task_number - 1
+        for name in self._map:
+            self._map[name]._finalized = True
+
+    def makefile_text(self, build_context):
+        """Return makefile text for build_context for building this task.
+
+        This function should be called only for the top-level task.
+        It finalizes all the tasks so that no more commands or
+        dependencies can be added afterwards.
+
+        """
+        if self._fullname != '':
+            self.context.error('makefile_text called for non-top-level '
+                               'task %s' % self._fullname)
+        self.finalize()
+        makefile = sourcery.makefile.Makefile(self.context, 'all')
+        for target in self._top_deps_list:
+            makefile.add_target(target)
         makefile.add_deps('all', [self.end_name()])
-        for target in deps_list:
-            makefile.add_deps(target, deps[target])
-        self.add_makefile_commands(makefile, build_context, task_number - 1)
+        for target in self._top_deps_list:
+            makefile.add_deps(target, self._top_deps[target])
+        self.add_makefile_commands(makefile, build_context,
+                                   self._top_num_tasks)
         return makefile.makefile_text()

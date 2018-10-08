@@ -21,6 +21,7 @@
 import collections
 import os
 import os.path
+import shutil
 import subprocess
 import tempfile
 
@@ -34,11 +35,35 @@ class BuildContext(object):
     """A BuildContext represents the configuration for a build."""
 
     def __init__(self, context, relcfg, args):
-        """Set up the build of a configuration."""
+        """Initialize a BuildContext for a configuration."""
         self.context = context
         self.relcfg = relcfg
         self.logdir = args.logdir
         self.parallelism = args.parallelism
+        self.build_objdir = relcfg.objdir_path(None, 'build')
+        self._tempdir_td = tempfile.TemporaryDirectory()
+        self.sockdir = self._tempdir_td.name
+        self.server = sourcery.rpc.RPCServer(self.sockdir)
+
+    def setup_build_dir(self):
+        """Set up tasks and build directory for a configuration.
+
+        This function creates the specified directory for files
+        related to the build process (not files used in the build of
+        individual components), removing and recreating it as
+        necessary; logs go in the specified directory for logs.  The
+        separate directory for sockets is expected to exist and to be
+        empty; that directory is separate because paths to Unix-domain
+        sockets have a small length limit, so a short path in /tmp is
+        appropriate rather than the longer paths used for the rest of
+        the build.
+
+        As well as other files, a GNUmakefile is created in the
+        specified directory for controlling the build, via 'make all'
+        unless a more selective build of particular tasks is required.
+
+        """
+        relcfg = self.relcfg
         top_task = sourcery.buildtask.BuildTask(relcfg, None, '', True)
         first_host = True
         for host in relcfg.hosts.get():
@@ -56,11 +81,15 @@ class BuildContext(object):
                                                                   component,
                                                                   host_task)
             first_host = False
-        self.build_objdir = relcfg.objdir_path(None, 'build')
-        self._tempdir_td = tempfile.TemporaryDirectory()
-        self.sockdir = self._tempdir_td.name
-        self.server = sourcery.rpc.RPCServer(self.sockdir)
-        top_task.setup_build_dir(self)
+        build_objdir = self.build_objdir
+        if os.access(build_objdir, os.F_OK):
+            shutil.rmtree(build_objdir)
+        os.makedirs(build_objdir)
+        os.makedirs(self.logdir, exist_ok=True)
+        makefile_text = top_task.makefile_text(self)
+        makefile_name = os.path.join(build_objdir, 'GNUmakefile')
+        with open(makefile_name, 'w', encoding='utf-8') as file:
+            file.write(makefile_text)
 
     def wrapper_run_command(self, log, fail_message, cwd):
         """Generate a call to the run-command wrapper.
@@ -133,6 +162,7 @@ class BuildContext(object):
     def run_build(self):
         """Run the build of a release configuration."""
         try:
+            self.setup_build_dir()
             self.server.start()
             try:
                 subprocess.run(['make', '-j%d' % self.parallelism],

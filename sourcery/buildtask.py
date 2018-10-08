@@ -18,10 +18,8 @@
 
 """Support build tasks."""
 
-import os
 import os.path
 import shlex
-import shutil
 
 from sourcery.fstree import FSTreeEmpty, FSTreeUnion
 from sourcery.makefile import command_to_make
@@ -561,34 +559,15 @@ class BuildTask(object):
             task.add_empty_dir_parent(path)
             task.add_python(tree.export, [path])
 
-    def setup_build_dir(self, build_context):
-        """Set up the directory from build_context for building this task.
+    def makefile_text(self, build_context):
+        """Return makefile text for build_context for building this task.
 
         This function should be called only for the top-level task.
-        It creates the specified directory for files related to the
-        build process (not files used in the build of individual
-        components), removing and recreating it as necessary; logs go
-        in the specified directory for logs.  The separate directory
-        for sockets is expected to exist and to be empty; that
-        directory is separate because paths to Unix-domain sockets
-        have a small length limit, so a short path in /tmp is
-        appropriate rather than the longer paths used for the rest of
-        the build.
-
-        As well as other files, a GNUmakefile is created in the
-        specified directory for controlling the build, via 'make all'
-        unless a more selective build of particular tasks is required.
 
         """
         if self._fullname != '':
-            self.context.error('setup_build_dir called for non-top-level '
+            self.context.error('makefile_text called for non-top-level '
                                'task %s' % self._fullname)
-        builddir = build_context.build_objdir
-        if os.access(builddir, os.F_OK):
-            shutil.rmtree(builddir)
-        os.makedirs(builddir)
-        os.makedirs(build_context.logdir, exist_ok=True)
-        makefile_name = os.path.join(builddir, 'GNUmakefile')
         self._create_implicit_install_tasks()
         deps = {}
         self.record_deps(deps)
@@ -607,6 +586,4 @@ class BuildTask(object):
         for target in deps_list:
             makefile.add_deps(target, deps[target])
         self.add_makefile_commands(makefile, build_context, task_number - 1)
-        mf_text = makefile.makefile_text()
-        with open(makefile_name, 'w', encoding='utf-8') as file:
-            file.write(mf_text)
+        return makefile.makefile_text()

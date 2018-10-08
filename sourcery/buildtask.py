@@ -227,14 +227,14 @@ class BuildTask(object):
         self._provides_install = set()
         # The following are set at finalization, for tasks with
         # commands in the case of _number and for all tasks in the
-        # case of _finalized.
+        # case of _finalized and _num_tasks.
         self._number = None
         self._finalized = False
+        self._num_tasks = None
         # The following are set at finalization, on the top-level task
         # only, and are not meaningful for other tasks.
         self._top_deps = None
         self._top_deps_list = None
-        self._top_num_tasks = None
         if parent is not None:
             parent._add_subtask(self)
 
@@ -530,13 +530,13 @@ class BuildTask(object):
         for sub in self._subtasks:
             sub.record_deps(deps)
 
-    def add_makefile_commands(self, makefile, build_context, num_tasks):
+    def add_makefile_commands(self, makefile, build_context):
         """Add makefile commands for building this task."""
         self._require_finalized('add_makefile_commands')
         context = self.context
         server = build_context.server
         if self._commands:
-            task_desc_text = '[%04d/%04d] %s' % (self._number, num_tasks,
+            task_desc_text = '[%04d/%04d] %s' % (self._number, self._num_tasks,
                                                  self._fullname)
             log = os.path.join(build_context.logdir, self.log_name())
             target = self.end_name()
@@ -557,7 +557,7 @@ class BuildTask(object):
             end_cmd = build_context.wrapper_end_task(log, msg_end)
             makefile.add_command(target, command_to_make(context, end_cmd))
         for sub in self._subtasks:
-            sub.add_makefile_commands(makefile, build_context, num_tasks)
+            sub.add_makefile_commands(makefile, build_context)
 
     def _create_implicit_install_tasks(self):
         """Create tasks for implicitly created install trees.
@@ -626,9 +626,10 @@ class BuildTask(object):
                 if t_task._commands:
                     t_task._number = task_number
                     task_number += 1
-        self._top_num_tasks = task_number - 1
+        num_tasks = task_number - 1
         for name in self._map:
             self._map[name]._finalized = True
+            self._map[name]._num_tasks = num_tasks
 
     def makefile_text(self, build_context):
         """Return makefile text for build_context for building this task.
@@ -648,6 +649,5 @@ class BuildTask(object):
         makefile.add_deps('all', [self.end_name()])
         for target in self._top_deps_list:
             makefile.add_deps(target, self._top_deps[target])
-        self.add_makefile_commands(makefile, build_context,
-                                   self._top_num_tasks)
+        self.add_makefile_commands(makefile, build_context)
         return makefile.makefile_text()

@@ -30,7 +30,8 @@ import tempfile
 import unittest
 import unittest.mock
 
-from sourcery.context import add_common_options, ScriptError, ScriptContext
+from sourcery.context import add_common_options, add_parallelism_option, \
+    ScriptError, ScriptContext
 from sourcery.relcfg import ReleaseConfigTextLoader
 
 __all__ = ['ContextTestCase']
@@ -152,6 +153,17 @@ class ContextTestCase(unittest.TestCase):
         self.assertEqual(args.testlogdir, '/arg6')
         self.assertFalse(args.verbose)
         self.assertTrue(args.silent)
+
+    def test_add_parallelism_option(self):
+        """Test add_parallelism_option."""
+        parser = argparse.ArgumentParser()
+        add_parallelism_option(parser)
+        args = parser.parse_args([])
+        self.assertEqual(args.parallelism, os.cpu_count())
+        args = parser.parse_args(['-j', '1'])
+        self.assertEqual(args.parallelism, 1)
+        args = parser.parse_args(['-j', '123'])
+        self.assertEqual(args.parallelism, 123)
 
     def test_init(self):
         """Test ScriptContext.__init__."""

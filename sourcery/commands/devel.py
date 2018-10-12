@@ -18,10 +18,9 @@
 
 """sourcery-builder devel command."""
 
-import os
-
 import sourcery.build
 import sourcery.command
+import sourcery.context
 import sourcery.relcfg
 
 __all__ = ['Command']
@@ -34,10 +33,7 @@ class Command(sourcery.command.Command):
 
     @staticmethod
     def add_arguments(parser):
-        parser.add_argument('-j', type=int, dest='parallelism',
-                            default=os.cpu_count(),
-                            help='Build with PARALLELISM tasks in parallel '
-                            '(default = number of CPU cores)')
+        sourcery.context.add_parallelism_option(parser)
         sourcery.relcfg.add_release_config_arg(parser)
 
     @staticmethod

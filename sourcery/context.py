@@ -30,7 +30,8 @@ import sys
 
 import sourcery.relcfg
 
-__all__ = ['add_common_options', 'ScriptError', 'ScriptContext']
+__all__ = ['add_common_options', 'add_parallelism_option', 'ScriptError',
+           'ScriptContext']
 
 
 def add_common_options(parser, cwd):
@@ -69,6 +70,14 @@ def add_common_options(parser, cwd):
                         help='Emit verbose messages')
     parser.add_argument('--silent', action='store_true', dest='silent',
                         help='Do not emit informational messages')
+
+
+def add_parallelism_option(parser):
+    """Add the -j option for parallelism to an argument parser."""
+    parser.add_argument('-j', type=int, dest='parallelism',
+                        default=os.cpu_count(),
+                        help='Use PARALLELISM tasks in parallel '
+                        '(default = number of CPU cores)')
 
 
 class ScriptError(Exception):

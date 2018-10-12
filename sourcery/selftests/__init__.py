@@ -18,5 +18,6 @@
 
 """Sourcery Builder self-tests package."""
 
-__all__ = ['test_buildcfg', 'test_context', 'test_fstree', 'test_makefile',
-           'test_pkghost', 'test_rpc', 'test_tsort', 'test_vc']
+__all__ = ['test_buildcfg', 'test_buildtask', 'test_context', 'test_fstree',
+           'test_makefile', 'test_pkghost', 'test_rpc', 'test_tsort',
+           'test_vc']

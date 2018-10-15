@@ -354,6 +354,10 @@ class BuildTask(object):
 
     def get_full_env(self):
         """Determine the full set of environment overrides for this task."""
+        # This requires the task to be finalized because it uses
+        # cached values that could be invalided by environment setting
+        # changes before finalization.
+        self._require_finalized('get_full_env')
         if self._full_env is not None:
             return self._full_env
         if self._parent:

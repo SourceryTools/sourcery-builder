@@ -502,6 +502,7 @@ class BuildTask(object):
 
     def log_name(self):
         """Return the name of the log file to use for this task."""
+        self._require_finalized('log_name')
         return '%04d%s-log.txt' % (self._number,
                                    self._fullname.replace('/', '-'))
 

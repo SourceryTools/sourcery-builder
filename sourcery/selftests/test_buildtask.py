@@ -825,3 +825,75 @@ class BuildTaskTestCase(unittest.TestCase):
         self.assertRaisesRegex(ScriptError,
                                'log_name called before finalization',
                                sub1_task.log_name)
+
+    def test_record_deps(self):
+        """Test record_deps."""
+        # Test serial and parallel tasks, and implicit dependencies,
+        # without install trees.
+        top_task = BuildTask(self.relcfg, None, '', True)
+        sub_task_a = BuildTask(self.relcfg, top_task, 'a', True)
+        sub_task_b = BuildTask(self.relcfg, top_task, 'b', False)
+        BuildTask(self.relcfg, top_task, 'x', False)
+        sub_task_y = BuildTask(self.relcfg, top_task, 'y', False)
+        sub_task_y.depend('/x')
+        BuildTask(self.relcfg, sub_task_a, 'c', True)
+        BuildTask(self.relcfg, sub_task_a, 'd', False)
+        BuildTask(self.relcfg, sub_task_b, 'e', True)
+        BuildTask(self.relcfg, sub_task_b, 'f', False)
+        deps = {}
+        top_task.record_deps(deps)
+        # Only verify the sets of dependencies, not their order.
+        for key in deps:
+            deps[key] = set(deps[key])
+        self.assertEqual(deps,
+                         {'task-start': set(),
+                          'task-end': {'task-start', 'task-end/a',
+                                       'task-end/b', 'task-end/x',
+                                       'task-end/y'},
+                          'task-start/a': {'task-start'},
+                          'task-end/a': {'task-start/a', 'task-end/a/c',
+                                         'task-end/a/d'},
+                          'task-start/b': {'task-start'},
+                          'task-end/b': {'task-start/b', 'task-end/b/e',
+                                         'task-end/b/f'},
+                          'task-start/x': {'task-start'},
+                          'task-end/x': {'task-start/x'},
+                          'task-start/y': {'task-start', 'task-end/x'},
+                          'task-end/y': {'task-start/y'},
+                          'task-start/a/c': {'task-start/a'},
+                          'task-end/a/c': {'task-start/a/c'},
+                          'task-start/a/d': {'task-start/a'},
+                          'task-end/a/d': {'task-start/a/d'},
+                          'task-start/b/e': {'task-start/b'},
+                          'task-end/b/e': {'task-start/b/e'},
+                          'task-start/b/f': {'task-start/b', 'task-end/b/e'},
+                          'task-end/b/f': {'task-start/b/f'}})
+        # Test case with install trees, depended on or provided.
+        top_task = BuildTask(self.relcfg, None, '', True)
+        sub_task_a = BuildTask(self.relcfg, top_task, 'a', True)
+        sub_task_b = BuildTask(self.relcfg, top_task, 'b', False)
+        test_pkg = PkgHost(self.context, 'x86_64-pc-linux-gnu')
+        test_build = BuildCfg(self.context, 'aarch64-linux-gnu')
+        sub_task_a.depend_install(test_pkg, 'test1')
+        sub_task_a.depend_install(test_build, 'test2')
+        sub_task_b.provide_install(test_pkg, 'test1')
+        sub_task_b.provide_install(test_build, 'test2')
+        deps = {}
+        top_task.record_deps(deps)
+        for key in deps:
+            deps[key] = set(deps[key])
+        self.assertEqual(deps,
+                         {'task-start': set(),
+                          'task-end': {'task-start', 'task-end/a',
+                                       'task-end/b'},
+                          'task-start/a': {
+                              'task-start',
+                              'install-trees/x86_64-pc-linux-gnu/test1',
+                              'install-trees/aarch64-linux-gnu/test2'},
+                          'task-end/a': {'task-start/a'},
+                          'task-start/b': {'task-start'},
+                          'task-end/b': {'task-start/b'},
+                          'install-trees/x86_64-pc-linux-gnu/test1': {
+                              'task-end/b'},
+                          'install-trees/aarch64-linux-gnu/test2': {
+                              'task-end/b'}})

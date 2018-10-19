@@ -535,9 +535,9 @@ class BuildTask(object):
         for sub in self._subtasks:
             sub.record_deps(deps)
 
-    def add_makefile_commands(self, makefile, build_context):
+    def _add_makefile_commands(self, makefile, build_context):
         """Add makefile commands for building this task."""
-        self._require_finalized('add_makefile_commands')
+        self._require_finalized('_add_makefile_commands')
         context = self.context
         server = build_context.server
         if self._commands:
@@ -562,7 +562,7 @@ class BuildTask(object):
             end_cmd = build_context.wrapper_end_task(log, msg_end)
             makefile.add_command(target, command_to_make(context, end_cmd))
         for sub in self._subtasks:
-            sub.add_makefile_commands(makefile, build_context)
+            sub._add_makefile_commands(makefile, build_context)
 
     def _create_implicit_install_tasks(self):
         """Create tasks for implicitly created install trees.
@@ -654,5 +654,5 @@ class BuildTask(object):
         makefile.add_deps('all', [self.end_name()])
         for target in self._top_deps_list:
             makefile.add_deps(target, self._top_deps[target])
-        self.add_makefile_commands(makefile, build_context)
+        self._add_makefile_commands(makefile, build_context)
         return makefile.makefile_text()

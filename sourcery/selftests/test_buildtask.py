@@ -740,40 +740,40 @@ class BuildTaskTestCase(unittest.TestCase):
         """Test errors from define_implicit_install."""
         top_task = BuildTask(self.relcfg, None, '', True)
         sub1_task = BuildTask(self.relcfg, top_task, 'a', False)
-        prov_pkg = PkgHost(self.context, 'x86_64-pc-linux-gnu')
-        prov_build = BuildCfg(self.context, 'aarch64-linux-gnu')
+        impl_pkg = PkgHost(self.context, 'x86_64-pc-linux-gnu')
+        impl_build = BuildCfg(self.context, 'aarch64-linux-gnu')
         tree = FSTreeEmpty(self.context)
         top_task.finalize()
         self.assertRaisesRegex(ScriptError,
                                'define_implicit_install called after '
                                'finalization',
-                               sub1_task.define_implicit_install, prov_pkg,
+                               sub1_task.define_implicit_install, impl_pkg,
                                'test', tree)
         top_task = BuildTask(self.relcfg, None, '', True)
         sub1_task = BuildTask(self.relcfg, top_task, 'a', False)
-        sub1_task.provide_install(prov_pkg, 'test-pkg')
+        sub1_task.provide_install(impl_pkg, 'test-pkg')
         self.assertRaisesRegex(ScriptError,
                                'install tree x86_64-pc-linux-gnu/test-pkg '
                                'already provided',
-                               sub1_task.define_implicit_install, prov_pkg,
+                               sub1_task.define_implicit_install, impl_pkg,
                                'test-pkg', tree)
-        top_task.declare_implicit_install(prov_build, 'test-2')
-        top_task.contribute_implicit_install(prov_pkg, 'test-3', tree)
-        top_task.define_implicit_install(prov_build, 'test-4', tree)
+        top_task.declare_implicit_install(impl_build, 'test-2')
+        top_task.contribute_implicit_install(impl_pkg, 'test-3', tree)
+        top_task.define_implicit_install(impl_build, 'test-4', tree)
         self.assertRaisesRegex(ScriptError,
                                'install tree aarch64-linux-gnu/test-2 '
                                'already declared',
-                               sub1_task.define_implicit_install, prov_build,
+                               sub1_task.define_implicit_install, impl_build,
                                'test-2', tree)
         self.assertRaisesRegex(ScriptError,
                                'install tree x86_64-pc-linux-gnu/test-3 '
                                'already contributed to',
-                               sub1_task.define_implicit_install, prov_pkg,
+                               sub1_task.define_implicit_install, impl_pkg,
                                'test-3', tree)
         self.assertRaisesRegex(ScriptError,
                                'install tree aarch64-linux-gnu/test-4 '
                                'already defined',
-                               sub1_task.define_implicit_install, prov_build,
+                               sub1_task.define_implicit_install, impl_build,
                                'test-4', tree)
 
     def test_start_name(self):

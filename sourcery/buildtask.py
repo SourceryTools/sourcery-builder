@@ -579,7 +579,7 @@ class BuildTask(object):
                                 key=_install_tree_key):
             if host_name not in self._implicit_declare:
                 self.context.error('install tree %s/%s never declared'
-                                   % host_name)
+                                   % (host_name[0].name, host_name[1]))
         all_trees = dict(self._implicit_define)
         all_trees.update(self._implicit_contribute)
         for host_name in self._implicit_declare:

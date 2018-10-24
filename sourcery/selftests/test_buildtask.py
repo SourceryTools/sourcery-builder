@@ -928,6 +928,7 @@ class BuildTaskTestCase(unittest.TestCase):
         top_task.finalize()
         deps = {}
         top_task.record_deps(deps)
+        deps_copy = deps.copy()
         for key in deps:
             deps[key] = set(deps[key])
         self.assertEqual(deps,
@@ -998,6 +999,11 @@ class BuildTaskTestCase(unittest.TestCase):
                           'install-trees/x86_64-pc-linux-gnu/test2-pkg': {
                               'task-end/install-trees-x86_64-pc-linux-gnu/'
                               'test2-pkg'}})
+        # Finalizing again is OK.
+        top_task.finalize()
+        deps = {}
+        top_task.record_deps(deps)
+        self.assertEqual(deps, deps_copy)
 
     def test_finalize_errors(self):
         """Test errors from finalize."""

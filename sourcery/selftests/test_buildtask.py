@@ -897,3 +897,119 @@ class BuildTaskTestCase(unittest.TestCase):
                               'task-end/b'},
                           'install-trees/aarch64-linux-gnu/test2': {
                               'task-end/b'}})
+
+    def test_finalize(self):
+        """Test finalize."""
+        # Task numbers are tested via tests of log_name, dependencies
+        # via tests of record_deps, and the effect of no longer being
+        # able to call various functions via tests of those functions.
+        # Thus, what needs testing here is the tasks for implicitly
+        # created install trees.
+        top_task = BuildTask(self.relcfg, None, '', True)
+        sub1_task = BuildTask(self.relcfg, top_task, 'a', False)
+        sub2_task = BuildTask(self.relcfg, top_task, 'b', False)
+        sub3_task = BuildTask(self.relcfg, top_task, 'c', False)
+        sub4_task = BuildTask(self.relcfg, top_task, 'd', False)
+        impl_pkg = PkgHost(self.context, 'x86_64-pc-linux-gnu')
+        impl_build = BuildCfg(self.context, 'aarch64-linux-gnu')
+        sub2_task.provide_install(impl_pkg, 'b-pkg')
+        sub3_task.provide_install(impl_build, 'c-build')
+        sub4_task.provide_install(impl_build, 'd-build')
+        tree_pkg = self.relcfg.install_tree_fstree(impl_pkg, 'b-pkg')
+        tree_build = self.relcfg.install_tree_fstree(impl_build, 'c-build')
+        tree2_build = self.relcfg.install_tree_fstree(impl_build, 'd-build')
+        sub1_task.declare_implicit_install(impl_pkg, 'test-pkg')
+        sub1_task.declare_implicit_install(impl_build, 'test-build')
+        sub1_task.contribute_implicit_install(impl_build, 'test-build',
+                                              tree_build)
+        sub1_task.contribute_implicit_install(impl_build, 'test-build',
+                                              tree2_build)
+        sub1_task.define_implicit_install(impl_pkg, 'test2-pkg', tree_pkg)
+        top_task.finalize()
+        deps = {}
+        top_task.record_deps(deps)
+        for key in deps:
+            deps[key] = set(deps[key])
+        self.assertEqual(deps,
+                         {'task-start': set(),
+                          'task-end': {
+                              'task-start', 'task-end/a', 'task-end/b',
+                              'task-end/c', 'task-end/d',
+                              'task-end/install-trees-aarch64-linux-gnu',
+                              'task-end/install-trees-x86_64-pc-linux-gnu'},
+                          'task-start/a': {'task-start'},
+                          'task-end/a': {'task-start/a'},
+                          'task-start/b': {'task-start'},
+                          'task-end/b': {'task-start/b'},
+                          'task-start/c': {'task-start'},
+                          'task-end/c': {'task-start/c'},
+                          'task-start/d': {'task-start'},
+                          'task-end/d': {'task-start/d'},
+                          'task-start/install-trees-aarch64-linux-gnu': {
+                              'task-start'},
+                          'task-end/install-trees-aarch64-linux-gnu': {
+                              'task-start/install-trees-aarch64-linux-gnu',
+                              'task-end/install-trees-aarch64-linux-gnu/'
+                              'test-build'},
+                          'task-start/install-trees-x86_64-pc-linux-gnu': {
+                              'task-start'},
+                          'task-end/install-trees-x86_64-pc-linux-gnu': {
+                              'task-start/install-trees-x86_64-pc-linux-gnu',
+                              'task-end/install-trees-x86_64-pc-linux-gnu/'
+                              'test-pkg',
+                              'task-end/install-trees-x86_64-pc-linux-gnu/'
+                              'test2-pkg'},
+                          'task-start/install-trees-aarch64-linux-gnu/'
+                          'test-build': {
+                              'task-start/install-trees-aarch64-linux-gnu',
+                              'install-trees/aarch64-linux-gnu/c-build',
+                              'install-trees/aarch64-linux-gnu/d-build'},
+                          'task-end/install-trees-aarch64-linux-gnu/'
+                          'test-build': {
+                              'task-start/install-trees-aarch64-linux-gnu/'
+                              'test-build'},
+                          'task-start/install-trees-x86_64-pc-linux-gnu/'
+                          'test-pkg': {
+                              'task-start/install-trees-x86_64-pc-linux-gnu'},
+                          'task-end/install-trees-x86_64-pc-linux-gnu/'
+                          'test-pkg': {
+                              'task-start/install-trees-x86_64-pc-linux-gnu/'
+                              'test-pkg'},
+                          'task-start/install-trees-x86_64-pc-linux-gnu/'
+                          'test2-pkg': {
+                              'task-start/install-trees-x86_64-pc-linux-gnu',
+                              'install-trees/x86_64-pc-linux-gnu/b-pkg'},
+                          'task-end/install-trees-x86_64-pc-linux-gnu/'
+                          'test2-pkg': {
+                              'task-start/install-trees-x86_64-pc-linux-gnu/'
+                              'test2-pkg'},
+                          'install-trees/aarch64-linux-gnu/c-build': {
+                              'task-end/c'},
+                          'install-trees/aarch64-linux-gnu/d-build': {
+                              'task-end/d'},
+                          'install-trees/x86_64-pc-linux-gnu/b-pkg': {
+                              'task-end/b'},
+                          'install-trees/aarch64-linux-gnu/test-build': {
+                              'task-end/install-trees-aarch64-linux-gnu/'
+                              'test-build'},
+                          'install-trees/x86_64-pc-linux-gnu/test-pkg': {
+                              'task-end/install-trees-x86_64-pc-linux-gnu/'
+                              'test-pkg'},
+                          'install-trees/x86_64-pc-linux-gnu/test2-pkg': {
+                              'task-end/install-trees-x86_64-pc-linux-gnu/'
+                              'test2-pkg'}})
+
+    def test_finalize_errors(self):
+        """Test errors from finalize."""
+        top_task = BuildTask(self.relcfg, None, '', True)
+        sub1_task = BuildTask(self.relcfg, top_task, 'a', True)
+        self.assertRaisesRegex(ScriptError,
+                               'finalize called for non-top-level task /a',
+                               sub1_task.finalize)
+        impl_pkg = PkgHost(self.context, 'x86_64-pc-linux-gnu')
+        tree = FSTreeEmpty(self.context)
+        sub1_task.contribute_implicit_install(impl_pkg, 'test-pkg', tree)
+        self.assertRaisesRegex(ScriptError,
+                               'install tree x86_64-pc-linux-gnu/test-pkg '
+                               'never declared',
+                               top_task.finalize)

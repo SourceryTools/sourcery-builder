@@ -293,16 +293,22 @@ class ReleaseConfig(object):
         self._vg.add_release_config_vars()
         self._components = set()
         loader.load_config(self, release_config)
-        if not isinstance(self.build.get(), sourcery.pkghost.PkgHost):
+        build_orig = self.build.get()
+        if not isinstance(build_orig, sourcery.pkghost.PkgHost):
             self.build.set_implicit(sourcery.pkghost.PkgHost(context,
-                                                             self.build.get()))
+                                                             build_orig))
         if not self.hosts.get_explicit():
             self.hosts.set_implicit((self.build.get(),))
         hlist_new = []
         for host in self.hosts.get():
             if not isinstance(host, sourcery.pkghost.PkgHost):
-                host = sourcery.pkghost.PkgHost(context, host)
+                if host == build_orig:
+                    host = self.build.get()
+                else:
+                    host = sourcery.pkghost.PkgHost(context, host)
             hlist_new.append(host)
+        if hlist_new[0] != self.build.get():
+            self.context.error('first host not the same as build system')
         self.hosts.set_implicit(hlist_new)
         installdir = self.installdir.get()
         installdir_rel = installdir[1:]

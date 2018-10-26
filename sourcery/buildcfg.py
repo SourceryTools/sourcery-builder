@@ -110,7 +110,7 @@ class BuildCfg:
         if name in tool_map:
             name = tool_map[name]
         tool_name = self._tool_prefix + name
-        if name == 'c++' or name == 'cpp' or name == 'g++' or name == 'gcc':
+        if name in ('c++', 'cpp', 'g++', 'gcc'):
             tool_args_ccopts = self._ccopts
         else:
             tool_args_ccopts = tuple()
@@ -153,7 +153,7 @@ class BuildCfg:
                                'a single string')
         for var in sorted(var_map.keys()):
             val = self.tool(var_map[var])
-            if cflags_extra is not None and (var == 'CC' or var == 'CXX'):
+            if cflags_extra is not None and var in ('CC', 'CXX'):
                 val.extend(cflags_extra)
             # The individual list elements will be used in shell
             # commands without extra quoting added, so must be safe

@@ -107,8 +107,7 @@ class BuildCfg:
 
         """
         tool_map = {'c-compiler': 'gcc', 'c++-compiler': 'g++'}
-        if name in tool_map:
-            name = tool_map[name]
+        name = tool_map.get(name, name)
         tool_name = self._tool_prefix + name
         if name in ('c++', 'cpp', 'g++', 'gcc'):
             tool_args_ccopts = self._ccopts

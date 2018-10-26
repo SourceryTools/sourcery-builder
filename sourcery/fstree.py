@@ -36,14 +36,14 @@ def _invalid_path(path):
     return '//' in path_exp or '/./' in path_exp or '/../' in path_exp
 
 
-class _NoBool(object):
+class _NoBool:
     """Internal class disallowing boolean conversions."""
 
     def __bool__(self):
         raise NotImplementedError
 
 
-class MapFSTree(object):
+class MapFSTree:
     """A MapFSTree describes how to construct a filesystem object.
 
     A filesystem object (the entity referred to by a filesystem name),
@@ -212,7 +212,7 @@ class MapFSTreeMap(MapFSTree):
             return self
 
 
-class FSTree(object):
+class FSTree:
     """An FSTree describes how to construct a filesystem object.
 
     This is similar to MapFSTree, except that FSTree works at a higher

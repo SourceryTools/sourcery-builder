@@ -31,7 +31,7 @@ import sourcery.rpc
 __all__ = ['BuildContext']
 
 
-class BuildContext(object):
+class BuildContext:
     """A BuildContext represents the configuration for a build."""
 
     def __init__(self, context, relcfg, args):

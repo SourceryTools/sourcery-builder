@@ -84,7 +84,7 @@ class ScriptError(Exception):
     """Errors detected by a script."""
 
 
-class ScriptContext(object):
+class ScriptContext:
     """Global context for a script as a whole."""
 
     def __init__(self, extra=None):

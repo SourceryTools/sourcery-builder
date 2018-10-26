@@ -29,7 +29,7 @@ __all__ = ['BuildStep', 'BuildCommand', 'BuildMake', 'BuildPython',
            'BuildTask']
 
 
-class BuildStep(object):
+class BuildStep:
     """A BuildStep represents a step run while building a toolchain.
 
     That step may be an ordinary command, or arguments to 'make', or a
@@ -157,7 +157,7 @@ def _install_tree_key(host_name):
     return (host_name[0].name, host_name[1])
 
 
-class BuildTask(object):
+class BuildTask:
     """A BuildTask represents a step or steps in building a toolchain.
 
     A BuildTask may be a container for other such tasks, run either in

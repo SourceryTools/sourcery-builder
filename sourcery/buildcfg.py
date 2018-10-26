@@ -24,7 +24,7 @@ import shlex
 __all__ = ['BuildCfg']
 
 
-class BuildCfg(object):
+class BuildCfg:
     """A BuildCfg represents a choice of tools for building code.
 
     BuildCfg objects describe both hosts in a toolchain, and target

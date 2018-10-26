@@ -34,7 +34,7 @@ def command_to_make(context, command):
     return ret
 
 
-class Makefile(object):
+class Makefile:
     """Class for generated makefiles.
 
     A Makefile represents the dependencies and commands involved in a

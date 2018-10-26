@@ -32,7 +32,7 @@ __all__ = ['ConfigVar', 'ConfigVarGroup', 'ComponentInConfig',
            'ReleaseConfig']
 
 
-class ConfigVar(object):
+class ConfigVar:
     """A ConfigVar is a release config variable.
 
     Before a variable is set in a release config, a ConfigVar must
@@ -78,7 +78,7 @@ class ConfigVar(object):
         return self._explicit
 
 
-class ConfigVarGroup(object):
+class ConfigVarGroup:
     """A collection of related configuration variables.
 
     Some variables may be directly held in a ConfigVarGroup.  A
@@ -158,7 +158,7 @@ class ConfigVarGroup(object):
             cls.add_release_config_vars(group)
 
 
-class ComponentInConfig(object):
+class ComponentInConfig:
     """An instance of a component in a release config.
 
     Normally a config contains a component once only.  However,
@@ -188,7 +188,7 @@ def add_release_config_arg(parser):
                         help='The release configuration to read')
 
 
-class ReleaseConfigLoader(object):
+class ReleaseConfigLoader:
     """How to load a release config.
 
     A release config may be loaded from a file specified by path, but
@@ -272,7 +272,7 @@ class ReleaseConfigTextLoader(ReleaseConfigLoader):
         return name
 
 
-class ReleaseConfig(object):
+class ReleaseConfig:
     """Configuration information for a toolchain.
 
     A ReleaseConfig holds all the configuration information required

@@ -107,7 +107,7 @@ class _RPCServerHandler(socketserver.BaseRequestHandler):
                 os._exit(0)
 
 
-class RPCServer(object):
+class RPCServer:
     """An RPCServer represents a way to run code in this script.
 
     Clients send a message to the server, which forks a copy of itself

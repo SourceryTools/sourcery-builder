@@ -21,7 +21,7 @@
 __all__ = ['Component']
 
 
-class Component(object):
+class Component:
     """Base class from which each component's class inherits."""
 
     @staticmethod

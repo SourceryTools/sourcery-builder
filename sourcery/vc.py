@@ -26,7 +26,7 @@ import tempfile
 __all__ = ['VC', 'GitVC', 'SvnVC', 'TarVC']
 
 
-class VC(object):
+class VC:
     """Support version control operations.
 
     This is a base class for classes for version control systems (the

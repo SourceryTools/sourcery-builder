@@ -23,7 +23,7 @@ import sourcery.buildcfg
 __all__ = ['PkgHost']
 
 
-class PkgHost(object):
+class PkgHost:
     """A PkgHost represents a host for which packages are built.
 
     Host code in such packages will typically be built with the tools

@@ -21,7 +21,7 @@
 __all__ = ['Command']
 
 
-class Command(object):
+class Command:
     """Base class from which each command's class inherits."""
 
     short_desc = None

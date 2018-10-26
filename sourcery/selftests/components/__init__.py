@@ -18,4 +18,5 @@
 
 """Sourcery Builder selftests.components package."""
 
-__all__ = ['files_to_touch', 'files_to_touch_glob', 'generic', 'postcheckout']
+__all__ = ['build_test', 'files_to_touch', 'files_to_touch_glob', 'generic',
+           'postcheckout']

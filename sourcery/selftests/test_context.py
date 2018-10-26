@@ -33,42 +33,9 @@ import unittest.mock
 from sourcery.context import add_common_options, add_parallelism_option, \
     ScriptError, ScriptContext
 from sourcery.relcfg import ReleaseConfigTextLoader
+from sourcery.selftests.support import redirect_file
 
 __all__ = ['ContextTestCase']
-
-
-@contextlib.contextmanager
-def _with_dup(old_fd):
-    """Open a file descriptor with dup that is automatically closed."""
-    new_fd = os.dup(old_fd)
-    try:
-        yield new_fd
-    finally:
-        os.close(new_fd)
-
-
-@contextlib.contextmanager
-def _with_open(*args, **kwargs):
-    """Open a file descriptor with open that is automatically closed."""
-    new_fd = os.open(*args, **kwargs)
-    try:
-        yield new_fd
-    finally:
-        os.close(new_fd)
-
-
-@contextlib.contextmanager
-def _redirect_file(file, name):
-    """Redirect output to a file for code in a 'with' statement."""
-    file.flush()
-    with _with_dup(file.fileno()) as old_out_fd:
-        with _with_open(name,
-                        os.O_WRONLY | os.O_CREAT | os.O_TRUNC) as new_out_fd:
-            try:
-                os.dup2(new_out_fd, file.fileno())
-                yield
-            finally:
-                os.dup2(old_out_fd, file.fileno())
 
 
 class ContextTestCase(unittest.TestCase):
@@ -92,8 +59,8 @@ class ContextTestCase(unittest.TestCase):
     @contextlib.contextmanager
     def redirect_stdout_stderr(self):
         """Redirect stdout and stderr for code in a 'with' statement."""
-        with _redirect_file(sys.stdout, self.temp_file('stdout')):
-            with _redirect_file(sys.stderr, self.temp_file('stderr')):
+        with redirect_file(sys.stdout, self.temp_file('stdout')):
+            with redirect_file(sys.stderr, self.temp_file('stderr')):
                 yield
 
     def temp_file_read(self, name):

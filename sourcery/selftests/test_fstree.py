@@ -28,45 +28,9 @@ import unittest
 import sourcery.context
 from sourcery.fstree import MapFSTreeCopy, MapFSTreeMap, FSTreeCopy, \
     FSTreeEmpty, FSTreeMove, FSTreeRemove, FSTreeUnion
+from sourcery.selftests.support import create_files, read_files
 
-__all__ = ['create_files', 'read_files', 'MapFSTreeTestCase', 'FSTreeTestCase']
-
-
-def create_files(top, dirs, files, symlinks):
-    """Create a structure of directories, files and symlinks."""
-    os.mkdir(top)
-    for subdir in dirs:
-        os.mkdir(os.path.join(top, subdir))
-    for filename in files:
-        with open(os.path.join(top, filename), 'w', encoding='utf-8') as file:
-            file.write(files[filename])
-    for linkname in symlinks:
-        os.symlink(symlinks[linkname], os.path.join(top, linkname))
-
-
-def read_files(top):
-    """Return details of directories, files and symlinks present."""
-    dirs = set()
-    files = {}
-    symlinks = {}
-    for subdir in os.scandir(top):
-        if subdir.is_file(follow_symlinks=False):
-            with open(subdir.path, 'r', encoding='utf-8') as file:
-                files[subdir.name] = file.read()
-        elif subdir.is_symlink():
-            symlinks[subdir.name] = os.readlink(subdir.path)
-        else:
-            dirs.add(subdir.name)
-            sub_dirs, sub_files, sub_symlinks = read_files(subdir.path)
-            for dirname in sub_dirs:
-                dirs.add(os.path.join(subdir.name, dirname))
-            for filename in sub_files:
-                files[os.path.join(subdir.name,
-                                   filename)] = sub_files[filename]
-            for linkname in sub_symlinks:
-                symlinks[os.path.join(subdir.name,
-                                      linkname)] = sub_symlinks[linkname]
-    return dirs, files, symlinks
+__all__ = ['MapFSTreeTestCase', 'FSTreeTestCase']
 
 
 class MapFSTreeTestCase(unittest.TestCase):

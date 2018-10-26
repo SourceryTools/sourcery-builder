@@ -228,9 +228,9 @@ class BuildTask:
         # The following are set at finalization, for tasks with
         # commands in the case of _number and for all tasks in the
         # case of _finalized and _num_tasks.
-        self._number = None
+        self._number = -1
         self._finalized = False
-        self._num_tasks = None
+        self._num_tasks = -1
         # The following are set at finalization, on the top-level task
         # only, and are not meaningful for other tasks.
         self._top_deps = None
@@ -503,6 +503,9 @@ class BuildTask:
     def log_name(self):
         """Return the name of the log file to use for this task."""
         self._require_finalized('log_name')
+        if self._number == -1:
+            self.context.error('log_name called for task %s with no commands'
+                               % self._fullname)
         return '%04d%s-log.txt' % (self._number,
                                    self._fullname.replace('/', '-'))
 

@@ -823,9 +823,14 @@ class BuildTaskTestCase(unittest.TestCase):
         top_task = BuildTask(self.relcfg, None, '', False)
         sub1_task = BuildTask(self.relcfg, top_task, 'z', False)
         sub1_task.add_command(['echo', 'z'])
+        sub2_task = BuildTask(self.relcfg, top_task, 'z2', False)
         self.assertRaisesRegex(ScriptError,
                                'log_name called before finalization',
                                sub1_task.log_name)
+        top_task.finalize()
+        self.assertRaisesRegex(ScriptError,
+                               'log_name called for task /z2 with no commands',
+                               sub2_task.log_name)
 
     def test_record_deps(self):
         """Test record_deps."""

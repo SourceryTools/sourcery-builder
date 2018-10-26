@@ -22,7 +22,8 @@ prototype purposes.  Some key missing pieces are:
 * Running any toolchain testsuites.
 
 * Self-tests for some parts of the code ("sourcery-builder self-test"
-  exists, but only tests some modules).
+  exists, but only tests some modules, while coding style is tested
+  separately by the check-style script).
 
 * Sanity checks in parts of the code.
 

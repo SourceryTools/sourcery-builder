@@ -20,6 +20,7 @@
 
 import argparse
 import contextlib
+import io
 import os
 import os.path
 import stat
@@ -92,6 +93,11 @@ class BuildContextTestCase(unittest.TestCase):
         with open(self.temp_file(name), 'r', encoding='utf-8') as file:
             return file.read()
 
+    def temp_file_write(self, name, contents):
+        """Write a file in tempdir for this test."""
+        with open(self.temp_file(name), 'w', encoding='utf-8') as file:
+            file.write(contents)
+
     def stdout_stderr_read(self):
         """Read the stdout and stderr for this test."""
         return (self.temp_file_read('stdout'), self.temp_file_read('stderr'))
@@ -137,6 +143,133 @@ class BuildContextTestCase(unittest.TestCase):
         self.build_context.setup_build_dir()
         dir_contents = sorted(os.listdir(self.build_context.build_objdir))
         self.assertEqual(dir_contents, ['GNUmakefile'])
+
+    def test_wrapper_run_command(self):
+        """Test wrapper_run_command."""
+        # We can't test much more than repeating the function's logic.
+        # The main testing that the generated command does what is
+        # intended is in tests of run_build.
+        self.setup_rc()
+        command = self.build_context.wrapper_run_command('/some/log', 123,
+                                                         '/some/dir')
+        self.assertEqual(command,
+                         [self.context.build_wrapper_path('run-command'),
+                          self.context.interp, self.context.script_full,
+                          self.build_context.build_objdir, '/some/log',
+                          self.build_context.sockdir, '123', '/some/dir'])
+
+    def test_wrapper_start_task(self):
+        """Test wrapper_start_task."""
+        # We can't test much more than repeating the function's logic.
+        # The main testing that the generated command does what is
+        # intended is in tests of run_build.
+        self.setup_rc()
+        command = self.build_context.wrapper_start_task('/some/log', 123)
+        self.assertEqual(command,
+                         [self.context.build_wrapper_path('start-task'),
+                          self.context.interp, self.context.script_full,
+                          self.build_context.build_objdir, '/some/log',
+                          self.build_context.sockdir, '123'])
+
+    def test_wrapper_end_task(self):
+        """Test wrapper_end_task."""
+        # We can't test much more than repeating the function's logic.
+        # The main testing that the generated command does what is
+        # intended is in tests of run_build.
+        self.setup_rc()
+        command = self.build_context.wrapper_end_task('/some/log', 123)
+        self.assertEqual(command,
+                         [self.context.build_wrapper_path('end-task'),
+                          self.context.interp, self.context.script_full,
+                          self.build_context.build_objdir, '/some/log',
+                          self.build_context.sockdir, '123'])
+
+    def test_rpc_client_command(self):
+        """Test rpc_client_command."""
+        # We can't test much more than repeating the function's logic.
+        # The main testing that the generated command does what is
+        # intended is in tests of run_build.
+        self.setup_rc()
+        command = self.build_context.rpc_client_command(123)
+        self.assertEqual(command,
+                         (self.context.script_command()
+                          + ['rpc-client', self.build_context.sockdir, '123']))
+
+    def test_task_start(self):
+        """Test task_start."""
+        self.setup_rc()
+        self.context.message_file = io.StringIO()
+        self.build_context.task_start('some start text')
+        output = self.context.message_file.getvalue()
+        self.assertTrue(output.endswith(' some start text start\n'))
+        self.assertRegex(output, r'^\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] ')
+        self.context.silent = True
+        self.context.message_file = io.StringIO()
+        self.build_context.task_start('more start text')
+        output = self.context.message_file.getvalue()
+        self.assertEqual(output, '')
+
+    def test_task_fail_command(self):
+        """Test task_fail_command."""
+        self.setup_rc()
+        self.context.message_file = io.StringIO()
+        test_desc = 'test description'
+        # Want to test that str() is called for non-string command
+        # passed, so don't just pass a string here.
+        test_cmd = ('test', 1)
+        test_log = self.temp_file('log')
+        exp_start = ('%s: warning: test description FAILED\n'
+                     "%s: warning: failed command was: ('test', 1)\n"
+                     '%s: warning: current log file is: %s '
+                     '(last 25 lines shown)\n'
+                     '------------------------------------ start '
+                     '------------------------------------\n'
+                     % (self.context.script, self.context.script,
+                        self.context.script, test_log))
+        exp_end = ('------------------------------------- end '
+                   '-------------------------------------\n')
+        num_text = '\n'.join(str(n) for n in range(100))
+        num_text_25 = '\n'.join(str(n) for n in range(75, 100))
+        # Last 25 lines of log.
+        self.context.message_file = io.StringIO()
+        self.temp_file_write('log', num_text + '\n')
+        self.build_context.task_fail_command(test_desc, test_cmd, test_log)
+        output = self.context.message_file.getvalue()
+        self.assertEqual(output, '%s%s\n%s' % (exp_start, num_text_25,
+                                               exp_end))
+        # Last 25 lines of log, no newline.
+        self.context.message_file = io.StringIO()
+        self.temp_file_write('log', num_text)
+        self.build_context.task_fail_command(test_desc, test_cmd, test_log)
+        output = self.context.message_file.getvalue()
+        self.assertEqual(output, '%s%s\n%s' % (exp_start, num_text_25,
+                                               exp_end))
+        # Empty log.
+        self.context.message_file = io.StringIO()
+        self.temp_file_write('log', '')
+        self.build_context.task_fail_command(test_desc, test_cmd, test_log)
+        output = self.context.message_file.getvalue()
+        self.assertEqual(output, '%s\n%s' % (exp_start, exp_end))
+        # Non-ASCII text in log.
+        self.context.message_file = io.StringIO()
+        self.temp_file_write('log', '\u00ff')
+        self.build_context.task_fail_command(test_desc, test_cmd, test_log)
+        output = self.context.message_file.getvalue()
+        self.assertEqual(output, '%s\\xc3\\xbf\n%s' % (exp_start, exp_end))
+
+    def test_task_end(self):
+        """Test task_end."""
+        self.setup_rc()
+        self.context.message_file = io.StringIO()
+        self.build_context.task_end('some end text')
+        output = self.context.message_file.getvalue()
+        self.assertTrue(output.endswith(' some end text end\n'))
+        self.assertRegex(output, r'^\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] ')
+        self.context.silent = True
+        self.context.message_file = io.StringIO()
+        self.build_context.task_end('more end text')
+        output = self.context.message_file.getvalue()
+        self.assertEqual(output, '')
 
     def test_run_build(self):
         """Test run_build, simple successful build."""
@@ -187,3 +320,13 @@ class BuildContextTestCase(unittest.TestCase):
         self.assertIn('[0004/0004]', stderr)
         self.assertIn('/x86_64-linux-gnu/all-hosts start', stderr)
         self.assertIn('/x86_64-w64-mingw32/other-hosts end', stderr)
+
+    def test_run_build_silent(self):
+        """Test run_build, simple successful build, silent."""
+        self.context.silent = True
+        self.setup_rc('cfg.add_component("build_test")\n')
+        with self.redirect_stdout_stderr():
+            self.build_context.run_build()
+        stdout, stderr = self.stdout_stderr_read()
+        self.assertEqual(stdout, '')
+        self.assertEqual(stderr, '')

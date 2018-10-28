@@ -1,4 +1,4 @@
-# Initialize sourcery.selftests.components package.
+# sourcery-builder build_fail_command component for testing.
 
 # Copyright 2018 Mentor Graphics Corporation.
 
@@ -16,8 +16,22 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder selftests.components package."""
+"""sourcery-builder build_fail_command component for testing."""
 
-__all__ = ['build_fail_cd', 'build_fail_command', 'build_fail_python',
-           'build_log', 'build_test', 'files_to_touch', 'files_to_touch_glob',
-           'generic', 'postcheckout']
+import sourcery.buildtask
+import sourcery.component
+
+__all__ = ['Component']
+
+
+class Component(sourcery.component.Component):
+    """build_fail_command component implementation."""
+
+    @staticmethod
+    def add_release_config_vars(group):
+        group.source_type.set_implicit('none')
+
+    @staticmethod
+    def add_build_tasks_for_first_host(cfg, host, component, host_group):
+        task = sourcery.buildtask.BuildTask(cfg, host_group, 'first-host')
+        task.add_command(['sh', '-c', 'echo 1; echo 2; echo 3; echo 4; false'])

@@ -30,7 +30,7 @@ import unittest
 
 from sourcery.build import BuildContext
 from sourcery.context import add_common_options, add_parallelism_option, \
-    ScriptContext
+    ScriptContext, ScriptError
 from sourcery.relcfg import ReleaseConfig, ReleaseConfigTextLoader
 import sourcery.rpc
 from sourcery.selftests.support import read_files, redirect_file, \
@@ -330,3 +330,71 @@ class BuildContextTestCase(unittest.TestCase):
         stdout, stderr = self.stdout_stderr_read()
         self.assertEqual(stdout, '')
         self.assertEqual(stderr, '')
+
+    def test_run_build_log(self):
+        """Test run_build, simple successful build, command output to log."""
+        self.setup_rc('cfg.add_component("build_log")\n')
+        with self.redirect_stdout_stderr():
+            self.build_context.run_build()
+        log = os.path.join(self.build_context.logdir,
+                           '0001-x86_64-linux-gnu-first-host-log.txt')
+        with open(log, 'r', encoding='utf-8') as file:
+            log_text = file.read()
+        num_text_1 = '\n'.join(str(n) for n in range(10))
+        num_text_2 = '\n'.join(str(n) for n in range(10, 20))
+        self.assertIn(num_text_1, log_text)
+        self.assertIn(num_text_2, log_text)
+
+    def test_run_build_fail_command(self):
+        """Test run_build, simple failed build."""
+        self.setup_rc('cfg.add_component("build_fail_command")\n')
+        with self.redirect_stdout_stderr():
+            self.assertRaisesRegex(ScriptError, 'build failed',
+                                   self.build_context.run_build)
+        stdout, stderr = self.stdout_stderr_read()
+        self.assertEqual(stdout, '')
+        log = os.path.join(self.build_context.logdir,
+                           '0001-x86_64-linux-gnu-first-host-log.txt')
+        with open(log, 'r', encoding='utf-8') as file:
+            log_text = file.read()
+        self.assertIn('1\n2\n3\n4\n', log_text)
+        self.assertIn('1\n2\n3\n4\n', stderr)
+
+    def test_run_build_fail_command_silent(self):
+        """Test run_build, simple failed build, silent."""
+        self.context.silent = True
+        self.setup_rc('cfg.add_component("build_fail_command")\n')
+        with self.redirect_stdout_stderr():
+            self.assertRaisesRegex(ScriptError, 'build failed',
+                                   self.build_context.run_build)
+        stdout, stderr = self.stdout_stderr_read()
+        self.assertEqual(stdout, '')
+        log = os.path.join(self.build_context.logdir,
+                           '0001-x86_64-linux-gnu-first-host-log.txt')
+        with open(log, 'r', encoding='utf-8') as file:
+            log_text = file.read()
+        self.assertIn('1\n2\n3\n4\n', log_text)
+        # Errors should still appear on stderr even with --silent.
+        self.assertIn('1\n2\n3\n4\n', stderr)
+
+    def test_run_build_fail_cd(self):
+        """Test run_build, bad cwd for command."""
+        self.setup_rc('cfg.add_component("build_fail_cd")\n')
+        with self.redirect_stdout_stderr():
+            self.assertRaisesRegex(ScriptError, 'build failed',
+                                   self.build_context.run_build)
+
+    def test_run_build_fail_python(self):
+        """Test run_build, failed Python step."""
+        self.setup_rc('cfg.add_component("build_fail_python")\n')
+        with self.redirect_stdout_stderr():
+            self.assertRaisesRegex(ScriptError, 'build failed',
+                                   self.build_context.run_build)
+        stdout, stderr = self.stdout_stderr_read()
+        self.assertEqual(stdout, '')
+        log = os.path.join(self.build_context.logdir,
+                           '0001-x86_64-linux-gnu-first-host-log.txt')
+        with open(log, 'r', encoding='utf-8') as file:
+            log_text = file.read()
+        self.assertRegex(log_text, 'ValueError.*test failure')
+        self.assertRegex(stderr, 'ValueError.*test failure')

@@ -19,5 +19,5 @@
 """Sourcery Builder selftests.components package."""
 
 __all__ = ['build_fail_cd', 'build_fail_command', 'build_fail_python',
-           'build_log', 'build_test', 'files_to_touch', 'files_to_touch_glob',
-           'generic', 'postcheckout']
+           'build_install_tree', 'build_log', 'build_test', 'files_to_touch',
+           'files_to_touch_glob', 'generic', 'postcheckout']

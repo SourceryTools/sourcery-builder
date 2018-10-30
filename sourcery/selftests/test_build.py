@@ -398,3 +398,31 @@ class BuildContextTestCase(unittest.TestCase):
             log_text = file.read()
         self.assertRegex(log_text, 'ValueError.*test failure')
         self.assertRegex(stderr, 'ValueError.*test failure')
+
+    def test_run_build_install_tree(self):
+        """Test run_build, implicit install tree creation."""
+        self.setup_rc('cfg.add_component("build_install_tree")\n')
+        with self.redirect_stdout_stderr():
+            self.build_context.run_build()
+        hosts = self.relcfg.hosts.get()
+        host_b0 = hosts[0].build_cfg
+        instdir_def = self.relcfg.install_tree_path(host_b0, 'impl-def')
+        instdir_empty = self.relcfg.install_tree_path(host_b0, 'impl-empty')
+        instdir_one = self.relcfg.install_tree_path(host_b0, 'impl-one')
+        instdir_two = self.relcfg.install_tree_path(host_b0, 'impl-two')
+        self.assertEqual(read_files(instdir_def),
+                         ({'q'},
+                          {'q/a': 'a\n'},
+                          {}))
+        self.assertEqual(read_files(instdir_empty),
+                         (set(),
+                          {},
+                          {}))
+        self.assertEqual(read_files(instdir_one),
+                         (set(),
+                          {'b': 'b\n'},
+                          {}))
+        self.assertEqual(read_files(instdir_two),
+                         (set(),
+                          {'b': 'b\n', 'c': 'c\n'},
+                          {}))

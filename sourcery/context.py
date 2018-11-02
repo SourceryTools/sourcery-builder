@@ -141,6 +141,9 @@ class ScriptContext:
         # How to set locale for (locale.setlocale unless changed for
         # testing purposes).
         self.setlocale = locale.setlocale
+        # How to set umask (os.umask unless changed for testing
+        # purposes).
+        self.umask = os.umask
         load_list = ['sourcery']
         if extra is not None:
             load_list.extend(extra)
@@ -272,6 +275,7 @@ class ScriptContext:
 
         """
         self.setlocale(locale.LC_ALL, 'C')
+        self.umask(0o022)
         need_reexec = False
         if not self.flags.no_user_site:
             need_reexec = True

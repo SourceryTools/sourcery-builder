@@ -164,6 +164,7 @@ class ContextTestCase(unittest.TestCase):
         self.assertIs(self.context.flags, sys.flags)
         self.assertEqual(self.context.execve, os.execve)
         self.assertEqual(self.context.setlocale, locale.setlocale)
+        self.assertEqual(self.context.umask, os.umask)
         self.assertIn('self-test', self.context.commands)
         import sourcery.commands.self_test
         self.assertEqual(self.context.commands['self-test'],
@@ -343,6 +344,7 @@ class ContextTestCase(unittest.TestCase):
     def test_clean_environment(self):
         """Test ScriptContext.clean_environment."""
         self.context.setlocale = unittest.mock.MagicMock()
+        self.context.umask = unittest.mock.MagicMock()
         self.context.flags = unittest.mock.MagicMock()
         self.context.flags.no_user_site = False
         self.context.flags.ignore_environment = False
@@ -361,6 +363,7 @@ class ContextTestCase(unittest.TestCase):
         self.context.environ = dict(test_env)
         self.context.clean_environment(argv)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_not_called()
         self.assertEqual(self.context.environ,
                          {'HOME': 'test-home',
@@ -372,10 +375,12 @@ class ContextTestCase(unittest.TestCase):
                           'PATH': 'test-path'})
         # Test with re-execution enabled.
         self.context.setlocale.reset_mock()
+        self.context.umask.reset_mock()
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         self.context.clean_environment(argv, reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(
             self.context.interp, self.context.script_command() + argv,
             self.context.environ)
@@ -389,6 +394,7 @@ class ContextTestCase(unittest.TestCase):
                           'PATH': 'test-path'})
         # Test with extra variables specified.
         self.context.setlocale.reset_mock()
+        self.context.umask.reset_mock()
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         self.context.clean_environment(
@@ -399,6 +405,7 @@ class ContextTestCase(unittest.TestCase):
                         'LD_LIBRARY_PATH': 'mod-ld-library-path'},
             reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(
             self.context.interp, self.context.script_command() + argv,
             self.context.environ)
@@ -415,12 +422,14 @@ class ContextTestCase(unittest.TestCase):
                           'EXTRA': 'mod-extra'})
         # Test case not needing re-execution.
         self.context.setlocale.reset_mock()
+        self.context.umask.reset_mock()
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         self.context.flags.no_user_site = True
         self.context.flags.ignore_environment = True
         self.context.clean_environment(argv, reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_not_called()
         self.assertEqual(self.context.environ,
                          {'HOME': 'test-home',
@@ -432,11 +441,13 @@ class ContextTestCase(unittest.TestCase):
                           'PATH': 'test-path'})
         # Re-execution needed if no_user_site is False.
         self.context.setlocale.reset_mock()
+        self.context.umask.reset_mock()
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         self.context.flags.no_user_site = False
         self.context.clean_environment(argv, reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(
             self.context.interp, self.context.script_command() + argv,
             self.context.environ)
@@ -450,12 +461,14 @@ class ContextTestCase(unittest.TestCase):
                           'PATH': 'test-path'})
         # Re-execution needed if ignore_environment is False.
         self.context.setlocale.reset_mock()
+        self.context.umask.reset_mock()
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         self.context.flags.no_user_site = True
         self.context.flags.ignore_environment = False
         self.context.clean_environment(argv, reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(
             self.context.interp, self.context.script_command() + argv,
             self.context.environ)
@@ -470,11 +483,13 @@ class ContextTestCase(unittest.TestCase):
         # Re-execution not needed if ignore_environment is False but
         # there are no PYTHON* variables.
         self.context.setlocale.reset_mock()
+        self.context.umask.reset_mock()
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         del self.context.environ['PYTHONTEST']
         self.context.clean_environment(argv, reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_not_called()
         self.assertEqual(self.context.environ,
                          {'HOME': 'test-home',
@@ -486,6 +501,7 @@ class ContextTestCase(unittest.TestCase):
                           'PATH': 'test-path'})
         # Re-execution needed if different interpreter wanted.
         self.context.setlocale.reset_mock()
+        self.context.umask.reset_mock()
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         self.context.flags.no_user_site = True
@@ -493,6 +509,7 @@ class ContextTestCase(unittest.TestCase):
         self.context.interp = sys.executable + '-other'
         self.context.clean_environment(argv, reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(
             self.context.interp, self.context.script_command() + argv,
             self.context.environ)
@@ -506,12 +523,14 @@ class ContextTestCase(unittest.TestCase):
                           'PATH': 'test-path'})
         # Re-execution needed if different script wanted.
         self.context.setlocale.reset_mock()
+        self.context.umask.reset_mock()
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         self.context.interp = sys.executable
         self.context.script_full = self.context.orig_script_full + '-other'
         self.context.clean_environment(argv, reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
+        self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(
             self.context.interp, self.context.script_command() + argv,
             self.context.environ)
@@ -528,6 +547,7 @@ class ContextTestCase(unittest.TestCase):
         """Test ScriptContext.main."""
         context = ScriptContext(['sourcery.selftests'])
         context.setlocale = unittest.mock.MagicMock()
+        context.umask = unittest.mock.MagicMock()
         context.flags = unittest.mock.MagicMock()
         context.flags.no_user_site = False
         context.flags.ignore_environment = False
@@ -576,6 +596,7 @@ class ContextTestCase(unittest.TestCase):
                          r'\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] '
                          r'\.\.\..*complete\.\n\Z')
         context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.umask.assert_called_with(0o022)
         context.execve.assert_not_called()
         self.assertEqual(context.environ,
                          {'HOME': 'test-home',
@@ -587,6 +608,7 @@ class ContextTestCase(unittest.TestCase):
                           'PATH': 'test-path'})
         # Test --silent.
         context.setlocale.reset_mock()
+        context.umask.reset_mock()
         context.execve.reset_mock()
         context.called_with_relcfg = unittest.mock.MagicMock()
         context.environ = dict(test_env)
@@ -602,6 +624,7 @@ class ContextTestCase(unittest.TestCase):
         output = context.message_file.getvalue()
         self.assertEqual(output, '')
         context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.umask.assert_called_with(0o022)
         context.execve.assert_not_called()
         self.assertEqual(context.environ,
                          {'HOME': 'test-home',
@@ -613,6 +636,7 @@ class ContextTestCase(unittest.TestCase):
                           'PATH': 'test-path'})
         # Test -v.
         context.setlocale.reset_mock()
+        context.umask.reset_mock()
         context.execve.reset_mock()
         context.called_with_relcfg = unittest.mock.MagicMock()
         context.environ = dict(test_env)
@@ -625,6 +649,7 @@ class ContextTestCase(unittest.TestCase):
         self.assertTrue(context.called_with_args.verbose)
         self.assertFalse(context.called_with_args.silent)
         context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.umask.assert_called_with(0o022)
         context.execve.assert_not_called()
         self.assertEqual(context.environ,
                          {'HOME': 'test-home',
@@ -636,6 +661,7 @@ class ContextTestCase(unittest.TestCase):
                           'PATH': 'test-path'})
         # Test description used for top-level --help.
         context.setlocale.reset_mock()
+        context.umask.reset_mock()
         context.execve.reset_mock()
         context.called_with_relcfg = unittest.mock.MagicMock()
         context.environ = dict(test_env)
@@ -646,6 +672,7 @@ class ContextTestCase(unittest.TestCase):
         self.assertRegex(help_text, r'generic *Save argument information\.')
         # Test descriptions used for sub-command --help.
         context.setlocale.reset_mock()
+        context.umask.reset_mock()
         context.execve.reset_mock()
         context.called_with_relcfg = unittest.mock.MagicMock()
         context.environ = dict(test_env)
@@ -658,17 +685,20 @@ class ContextTestCase(unittest.TestCase):
         self.assertTrue(help_text.endswith('Additional description.\n'))
         # Test re-exec when requested by check_script.
         context.setlocale.reset_mock()
+        context.umask.reset_mock()
         context.execve.reset_mock()
         context.called_with_relcfg = unittest.mock.MagicMock()
         context.environ = dict(test_env)
         context.main(None, ['reexec', 'arg1'])
         context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.umask.assert_called_with(0o022)
         context.execve.assert_called_once_with(
             context.interp,
             context.script_command() + ['reexec', 'arg1'],
             context.environ)
         # Test re-exec not done when not needed.
         context.setlocale.reset_mock()
+        context.umask.reset_mock()
         context.execve.reset_mock()
         context.flags.no_user_site = True
         context.flags.ignore_environment = True
@@ -676,9 +706,11 @@ class ContextTestCase(unittest.TestCase):
         context.environ = dict(test_env)
         context.main(None, ['reexec', 'arg1'])
         context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.umask.assert_called_with(0o022)
         context.execve.assert_not_called()
         # Test commands using release configs.
         context.setlocale.reset_mock()
+        context.umask.reset_mock()
         context.execve.reset_mock()
         context.called_with_relcfg = unittest.mock.MagicMock()
         context.environ = dict(test_env)
@@ -688,6 +720,7 @@ class ContextTestCase(unittest.TestCase):
                        'cfg.target.set("aarch64-linux-gnu")\n')
         context.main(ReleaseConfigTextLoader(), ['reexec-relcfg', relcfg_text])
         context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.umask.assert_called_with(0o022)
         context.execve.assert_not_called()
         self.assertEqual(context.called_with_relcfg.build.get().name,
                          'x86_64-linux-gnu')
@@ -703,6 +736,7 @@ class ContextTestCase(unittest.TestCase):
         self.assertEqual(context.interp, sys.executable)
         # Test release config setting environment variables.
         context.setlocale.reset_mock()
+        context.umask.reset_mock()
         context.execve.reset_mock()
         context.called_with_relcfg = unittest.mock.MagicMock()
         context.environ = dict(test_env)
@@ -713,6 +747,7 @@ class ContextTestCase(unittest.TestCase):
                        'cfg.env_set.set({"OTHER": "rc-other"})\n')
         context.main(ReleaseConfigTextLoader(), ['reexec-relcfg', relcfg_text])
         context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.umask.assert_called_with(0o022)
         context.execve.assert_not_called()
         self.assertEqual(context.called_with_relcfg.build.get().name,
                          'x86_64-linux-gnu')
@@ -729,6 +764,7 @@ class ContextTestCase(unittest.TestCase):
         self.assertEqual(context.interp, sys.executable)
         # Test release config forcing re-exec by setting script_full.
         context.setlocale.reset_mock()
+        context.umask.reset_mock()
         context.execve.reset_mock()
         context.called_with_relcfg = unittest.mock.MagicMock()
         context.environ = dict(test_env)
@@ -740,6 +776,7 @@ class ContextTestCase(unittest.TestCase):
                        % context.script_full)
         context.main(ReleaseConfigTextLoader(), ['reexec-relcfg', relcfg_text])
         context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.umask.assert_called_with(0o022)
         context.execve.assert_called_once_with(
             context.interp,
             context.script_command() + ['reexec-relcfg', relcfg_text],
@@ -760,6 +797,7 @@ class ContextTestCase(unittest.TestCase):
         context.script_full = context.orig_script_full
         # Test release config forcing re-exec by setting interp.
         context.setlocale.reset_mock()
+        context.umask.reset_mock()
         context.execve.reset_mock()
         context.called_with_relcfg = unittest.mock.MagicMock()
         context.environ = dict(test_env)
@@ -771,6 +809,7 @@ class ContextTestCase(unittest.TestCase):
                        % context.interp)
         context.main(ReleaseConfigTextLoader(), ['reexec-relcfg', relcfg_text])
         context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.umask.assert_called_with(0o022)
         context.execve.assert_called_once_with(
             context.interp,
             context.script_command() + ['reexec-relcfg', relcfg_text],

@@ -1,4 +1,4 @@
-# Initialize sourcery.selftests.components package.
+# sourcery-builder configure_opts component for testing.
 
 # Copyright 2018 Mentor Graphics Corporation.
 
@@ -16,8 +16,22 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder selftests.components package."""
+"""sourcery-builder configure_opts component for testing."""
 
-__all__ = ['build_fail_cd', 'build_fail_command', 'build_fail_python',
-           'build_install_tree', 'build_log', 'build_test', 'configure_opts',
-           'files_to_touch', 'files_to_touch_glob', 'generic', 'postcheckout']
+import sourcery.component
+
+__all__ = ['Component']
+
+
+class Component(sourcery.component.Component):
+    """configure_opts component implementation."""
+
+    @staticmethod
+    def add_release_config_vars(group):
+        group.source_type.set_implicit('open')
+
+    @staticmethod
+    def configure_opts(cfg, host):
+        return ['--test', '--option',
+                '--for-target=%s' % cfg.target.get(),
+                '--for-host=%s' % host.name]

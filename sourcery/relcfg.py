@@ -43,14 +43,16 @@ class ConfigVar:
 
     """
 
-    def __init__(self, value):
+    def __init__(self, value, doc):
         """Initialize a ConfigVar object."""
         if isinstance(value, ConfigVar):
             self._value = value._value
             self._explicit = value._explicit
+            self.__doc__ = value.__doc__
         else:
             self._value = value
             self._explicit = False
+            self.__doc__ = doc
 
     def set(self, value):
         """Set the value of a ConfigVar object."""
@@ -96,7 +98,7 @@ class ConfigVarGroup:
         self._vargroups = {}
         if copy is not None:
             for var in copy._vars:
-                self._vars[var] = ConfigVar(copy._vars[var])
+                self._vars[var] = ConfigVar(copy._vars[var], None)
             for var in copy._vargroups:
                 self._vargroups[var] = ConfigVarGroup(copy._vargroups[var])
 
@@ -108,13 +110,13 @@ class ConfigVarGroup:
             return self._vargroups[name]
         raise AttributeError(name)
 
-    def add_var(self, name, value):
+    def add_var(self, name, value, doc):
         """Add a variable to a ConfigVarGroup."""
         if name in self._vars:
             self.context.error('duplicate variable %s' % name)
         if name in self._vargroups:
             self.context.error('variable %s duplicates group' % name)
-        self._vars[name] = ConfigVar(value)
+        self._vars[name] = ConfigVar(value, doc)
 
     def add_group(self, name, copy):
         """Add a ConfigVarGroup to a ConfigVarGroup.
@@ -140,20 +142,113 @@ class ConfigVarGroup:
         is called.
 
         """
-        self.add_var('build', None)
-        self.add_var('hosts', None)
-        self.add_var('target', None)
-        self.add_var('installdir', '/opt/toolchain')
-        self.add_var('script_full', self.context.script_full)
-        self.add_var('interp', self.context.interp)
-        self.add_var('env_set', {})
+        self.add_var('build', None,
+                     """A PkgHost object for the system on which this config
+                     is to be built.
+
+                     A GNU triplet may be specfied as a string, and is
+                     converted automatically into a PkgHost.""")
+        self.add_var('hosts', None,
+                     """A list of PkgHost objects for the hosts for which this
+                     config builds tools.
+
+                     If not specified, the default is the build system only.
+                     In any case, the first entry in this list must be the
+                     same PkgHost object as specified for the build system.
+                     Hosts may be specified as strings for GNU triplets, and
+                     those are automatically converted into PkgHost objects;
+                     if the build system is specified as a string, a host
+                     specified as the same string is converted into the same
+                     PkgHost object.""")
+        self.add_var('target', None,
+                     """A GNU triplet string for the target for which
+                     compilation tools built by this config generate code.
+
+                     Some configs may build tools for more than one target
+                     (for example, offloading compilers); this string only
+                     describes the main target.  This is a string, not a
+                     BuildCfg, since the tools may support several multilibs,
+                     each of which has its own BuildCfg.""")
+        self.add_var('installdir', '/opt/toolchain',
+                     """The configured prefix for the host tools built by this
+                     config.
+
+                     This does not affect code built for the target; that
+                     typically would use a prefix of /usr, independent of the
+                     prefix used on the host.  Also, as installed tools are
+                     generally relocatable, this is just a build-time default
+                     prefix, and users may install in a different prefix.""")
+        self.add_var('script_full', self.context.script_full,
+                     """The expected full path to the script running the build.
+
+                     For release builds, the script running the build is
+                     expected to come from a checkout of the build scripts, as
+                     created by the checkout command, rather than from some
+                     other copy of the scripts that may not be checked out
+                     from the desired location and would not be properly
+                     packaged in source packages.  Site-specific packages
+                     wrapping Sourcery Builder, or configs intended for use in
+                     such environments, set this appropriately to enable such
+                     checks for release builds.""")
+        self.add_var('interp', self.context.interp,
+                     """The expected full path to the Python interpreter
+                     running the build script.
+
+                     For release builds, site-specific packages wrapping
+                     Sourcery Builder, or configs intended for use in such
+                     environments, set this, like script_full, to enable checks
+                     for release builds that the expected Python interpreter is
+                     used for the build.""")
+        self.add_var('env_set', {},
+                     """Environment variables to set for building this config.
+
+                     This may include settings of PATH and LD_LIBRARY_PATH;
+                     such settings are required here to ensure a fully
+                     controlled build environment with proper isolation from
+                     the shell environment of the user running the build.
+                     Other environment variables required by the whole build
+                     may also be set here.  Environment variables required only
+                     by some build tasks may be set by build code at the level
+                     of those build tasks.""")
         for component in self.context.components:
             group = self.add_group(component, None)
-            group.add_var('configure_opts', [])
-            group.add_var('vc', None)
-            group.add_var('version', None)
-            group.add_var('source_type', None)
-            group.add_var('srcdirname', component)
+            group.add_var('configure_opts', [],
+                          """Options to pass to 'configure' for this component.
+
+                          If this component does not use a configure-based
+                          build, this variable is ignored.""")
+            group.add_var('vc', None,
+                          """The version control location (a VC object) from
+                          which sources for this component are checked out.
+
+                          If source_type for a component is 'none', this does
+                          not need to be specified.""")
+            group.add_var('version', None,
+                          """A version number or name for this component, as
+                          used in source directory names.
+
+                          The value of this variable has no semantic
+                          significance beyond its use in source directory
+                          names.  If source_type for a component is 'none',
+                          this does not need to be specified.""")
+            group.add_var('source_type', None,
+                          """One of 'open', 'closed' or 'none',
+
+                          If 'open', sources for this component are packaged in
+                          the source package, which is expected to be
+                          distributed to recipients of the binary packages.
+                          If 'closed' sources are instead packaged in the
+                          backup package, which is not distributed.  If 'none',
+                          this component has no source directory (such
+                          components may, for example, serve to represent part
+                          of the implementation of the build with no sources
+                          outside of Sourcery Builder).""")
+            group.add_var('srcdirname', component,
+                          """A prefix to use in names of source directories.
+
+                          This is used together with the specified version
+                          number to produce source directory names.  The
+                          default is the name of the component.""")
             cls = self.context.components[component]
             cls.add_release_config_vars(group)
 
@@ -312,15 +407,36 @@ class ReleaseConfig:
         self.hosts.set_implicit(hlist_new)
         installdir = self.installdir.get()
         installdir_rel = installdir[1:]
-        self._vg.add_var('installdir_rel', installdir_rel)
-        self._vg.add_var('bindir', os.path.join(installdir, 'bin'))
-        self._vg.add_var('bindir_rel', os.path.join(installdir_rel, 'bin'))
+        self._vg.add_var('installdir_rel', installdir_rel,
+                         """Internal variable: installdir without the leading
+                         '/'.""")
+        self._vg.add_var('bindir', os.path.join(installdir, 'bin'),
+                         """Internal variable: configured directory for host
+                         binaries (starting with installdir).""")
+        self._vg.add_var('bindir_rel', os.path.join(installdir_rel, 'bin'),
+                         """Internal variable: bindir without the leading
+                         '/'.""")
         self._vg.add_var('sysroot', '%s/%s/libc' % (installdir,
-                                                    self.target.get()))
+                                                    self.target.get()),
+                         """Internal variable: configured directory for target
+                         sysroot (starting with installdir).
+
+                         This sysroot is the top-level sysroot, which may have
+                         many sysroot subdirectories used for different
+                         multilibs.""")
         self._vg.add_var('sysroot_rel', '%s/%s/libc' % (installdir_rel,
-                                                        self.target.get()))
+                                                        self.target.get()),
+                         """Internal variable: sysroot without the leading
+                         '/'.""")
         self._vg.add_var('info_dir_rel', os.path.join(installdir_rel,
-                                                      'share/info/dir'))
+                                                      'share/info/dir'),
+                         """Internal variable: configured location of the info
+                         directory (starting with installdir_rel).
+
+                         The main purpose of this variable is for use in code
+                         that removes the info directory to avoid conflicts
+                         between copies installed by different toolchain
+                         components.""")
         self._components_full = []
         self._components_full_byname = {}
         for component in sorted(self._components):
@@ -332,7 +448,9 @@ class ReleaseConfig:
             if c_vars.source_type.get() != 'none':
                 c_srcdir = '%s-%s' % (c_vars.srcdirname.get(),
                                       c_vars.version.get())
-                c_vars.add_var('srcdir', os.path.join(args.srcdir, c_srcdir))
+                c_vars.add_var('srcdir', os.path.join(args.srcdir, c_srcdir),
+                               """Internal variable: source directory for this
+                               component.""")
         self._components_full = tuple(self._components_full)
 
     def __getattr__(self, name):

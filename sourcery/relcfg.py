@@ -18,6 +18,7 @@
 
 """Support release configurations."""
 
+import collections.abc
 import functools
 import os.path
 
@@ -26,10 +27,113 @@ from sourcery.fstree import FSTreeCopy
 import sourcery.pkghost
 import sourcery.vc
 
-__all__ = ['ConfigVar', 'ConfigVarGroup', 'ComponentInConfig',
-           'add_release_config_arg', 'ReleaseConfigLoader',
-           'ReleaseConfigPathLoader', 'ReleaseConfigTextLoader',
-           'ReleaseConfig']
+__all__ = ['ConfigVarType', 'ConfigVarTypeList', 'ConfigVarTypeDict',
+           'ConfigVarTypeStrEnum', 'ConfigVar', 'ConfigVarGroup',
+           'ComponentInConfig', 'add_release_config_arg',
+           'ReleaseConfigLoader', 'ReleaseConfigPathLoader',
+           'ReleaseConfigTextLoader', 'ReleaseConfig']
+
+
+class ConfigVarType:
+    """A ConfigVarType describes the values to which a ConfigVar may be set.
+
+    A ConfigVarType may just restrict the values to being instances of
+    particular types, or it may also provide checking and conversion
+    logic applied to the value specified (for example, to convert a
+    list to a tuple, or to verify the values of members of some type).
+
+    The restrictions only apply to values passed to setting methods,
+    and not to the initial value specified when the variable is
+    created.  Thus the initial value may be None (or another special
+    value) even if that value is not valid for initial setting.
+
+    ConfigVarType is not intended to cover all possible restrictions
+    on values of release config variables, and cannot cover
+    restrictions that relate the value of one variable to the value of
+    other variables, but provides a preliminary sanity check on values
+    specified in release configs to catch some kinds of mistakes.
+    Logic in or called from ReleaseConfig.__init__ may check for other
+    restrictions on the values of variables.
+
+    """
+
+    def __init__(self, context, *args):
+        """Initialize a ConfigVarType object.
+
+        The arguments passed, after the context, are valid types for
+        this variable.
+
+        """
+        self.context = context
+        self._types = tuple(args)
+
+    def check(self, name, value):
+        """Check whether a value is valid for the specified type.
+
+        Returns the value after any conversions needed.
+
+        """
+        if not isinstance(value, self._types):
+            self.context.error('bad type for value of release config '
+                               'variable %s' % name)
+        return value
+
+
+class ConfigVarTypeList(ConfigVarType):
+    """A ConfigVarTypeList describes a list-typed ConfigVar.
+
+    A type is specified for elements of the list.  A list or tuple may
+    be passed and is converted to a tuple.  Arbitrary iterables are
+    not allowed, to avoid mistakes passing a string when a list of
+    strings is expected.
+
+    """
+
+    def __init__(self, elt_type):
+        super().__init__(elt_type.context, list, tuple)
+        self._elt_type = elt_type
+
+    def check(self, name, value):
+        value = super().check(name, value)
+        return tuple(self._elt_type.check(name, elt) for elt in value)
+
+
+class ConfigVarTypeDict(ConfigVarType):
+    """A ConfigVarTypeDict describes a dict-typed ConfigVar.
+
+    Types are specified for keys and values of the dict.  Any mapping
+    may be passed and is copied.
+
+    """
+
+    def __init__(self, key_type, value_type):
+        super().__init__(key_type.context, collections.abc.Mapping)
+        self._key_type = key_type
+        self._value_type = value_type
+
+    def check(self, name, value):
+        value = super().check(name, value)
+        return {self._key_type.check(name, key):
+                self._value_type.check(name, elt_value)
+                for key, elt_value in value.items()}
+
+
+class ConfigVarTypeStrEnum(ConfigVarType):
+    """A ConfigVarTypeStrEnum describes a ConfigVar taking values in a
+    given set of strings.
+
+    """
+
+    def __init__(self, context, values):
+        super().__init__(context, str)
+        self._values = set(values)
+
+    def check(self, name, value):
+        value = super().check(name, value)
+        if value not in self._values:
+            self.context.error('bad value for release config variable %s'
+                               % name)
+        return value
 
 
 class ConfigVar:
@@ -43,20 +147,23 @@ class ConfigVar:
 
     """
 
-    def __init__(self, value, doc):
+    def __init__(self, name, var_type, value, doc):
         """Initialize a ConfigVar object."""
+        self._name = name
         if isinstance(value, ConfigVar):
+            self._type = value._type
             self._value = value._value
             self._explicit = value._explicit
             self.__doc__ = value.__doc__
         else:
+            self._type = var_type
             self._value = value
             self._explicit = False
             self.__doc__ = doc
 
     def set(self, value):
         """Set the value of a ConfigVar object."""
-        self._value = value
+        self._value = self._type.check(self._name, value)
         self._explicit = True
 
     def set_implicit(self, value):
@@ -69,7 +176,7 @@ class ConfigVar:
         not for direct use by release configs.
 
         """
-        self._value = value
+        self._value = self._type.check(self._name, value)
 
     def get(self):
         """Get the value of a ConfigVar object."""
@@ -91,16 +198,26 @@ class ConfigVarGroup:
 
     """
 
-    def __init__(self, context, copy=None):
+    def __init__(self, context, name, copy=None):
         """Initialize a ConfigVarGroup object."""
         self.context = context
+        self._name = name
         self._vars = {}
         self._vargroups = {}
+        if name:
+            self._name_prefix = '%s.' % name
+        else:
+            self._name_prefix = ''
         if copy is not None:
             for var in copy._vars:
-                self._vars[var] = ConfigVar(copy._vars[var], None)
+                var_name = '%s%s' % (self._name_prefix, var)
+                self._vars[var] = ConfigVar(var_name, None, copy._vars[var],
+                                            None)
             for var in copy._vargroups:
-                self._vargroups[var] = ConfigVarGroup(copy._vargroups[var])
+                group_name = '%s%s' % (self._name_prefix, var)
+                self._vargroups[var] = ConfigVarGroup(self.context,
+                                                      group_name,
+                                                      copy._vargroups[var])
 
     def __getattr__(self, name):
         """Return a member of a ConfigVarGroup."""
@@ -110,13 +227,14 @@ class ConfigVarGroup:
             return self._vargroups[name]
         raise AttributeError(name)
 
-    def add_var(self, name, value, doc):
+    def add_var(self, name, var_type, value, doc):
         """Add a variable to a ConfigVarGroup."""
         if name in self._vars:
             self.context.error('duplicate variable %s' % name)
         if name in self._vargroups:
             self.context.error('variable %s duplicates group' % name)
-        self._vars[name] = ConfigVar(value, doc)
+        var_name = '%s%s' % (self._name_prefix, name)
+        self._vars[name] = ConfigVar(var_name, var_type, value, doc)
 
     def add_group(self, name, copy):
         """Add a ConfigVarGroup to a ConfigVarGroup.
@@ -128,7 +246,8 @@ class ConfigVarGroup:
             self.context.error('duplicate variable group %s' % name)
         if name in self._vars:
             self.context.error('variable group %s duplicates variable' % name)
-        self._vargroups[name] = ConfigVarGroup(self.context, copy)
+        group_name = '%s%s' % (self._name_prefix, name)
+        self._vargroups[name] = ConfigVarGroup(self.context, group_name, copy)
         return self._vargroups[name]
 
     def list_vars(self):
@@ -142,13 +261,19 @@ class ConfigVarGroup:
         is called.
 
         """
-        self.add_var('build', None,
+        self.add_var('build',
+                     ConfigVarType(self.context, sourcery.pkghost.PkgHost,
+                                   str),
+                     None,
                      """A PkgHost object for the system on which this config
                      is to be built.
 
                      A GNU triplet may be specfied as a string, and is
                      converted automatically into a PkgHost.""")
-        self.add_var('hosts', None,
+        self.add_var('hosts',
+                     ConfigVarTypeList(
+                         ConfigVarType(self.context, sourcery.pkghost.PkgHost,
+                                       str)), None,
                      """A list of PkgHost objects for the hosts for which this
                      config builds tools.
 
@@ -160,7 +285,7 @@ class ConfigVarGroup:
                      if the build system is specified as a string, a host
                      specified as the same string is converted into the same
                      PkgHost object.""")
-        self.add_var('target', None,
+        self.add_var('target', ConfigVarType(self.context, str), None,
                      """A GNU triplet string for the target for which
                      compilation tools built by this config generate code.
 
@@ -169,7 +294,8 @@ class ConfigVarGroup:
                      describes the main target.  This is a string, not a
                      BuildCfg, since the tools may support several multilibs,
                      each of which has its own BuildCfg.""")
-        self.add_var('installdir', '/opt/toolchain',
+        self.add_var('installdir', ConfigVarType(self.context, str),
+                     '/opt/toolchain',
                      """The configured prefix for the host tools built by this
                      config.
 
@@ -178,7 +304,8 @@ class ConfigVarGroup:
                      prefix used on the host.  Also, as installed tools are
                      generally relocatable, this is just a build-time default
                      prefix, and users may install in a different prefix.""")
-        self.add_var('script_full', self.context.script_full,
+        self.add_var('script_full', ConfigVarType(self.context, str),
+                     self.context.script_full,
                      """The expected full path to the script running the build.
 
                      For release builds, the script running the build is
@@ -190,7 +317,8 @@ class ConfigVarGroup:
                      wrapping Sourcery Builder, or configs intended for use in
                      such environments, set this appropriately to enable such
                      checks for release builds.""")
-        self.add_var('interp', self.context.interp,
+        self.add_var('interp', ConfigVarType(self.context, str),
+                     self.context.interp,
                      """The expected full path to the Python interpreter
                      running the build script.
 
@@ -199,7 +327,10 @@ class ConfigVarGroup:
                      environments, set this, like script_full, to enable checks
                      for release builds that the expected Python interpreter is
                      used for the build.""")
-        self.add_var('env_set', {},
+        self.add_var('env_set',
+                     ConfigVarTypeDict(ConfigVarType(self.context, str),
+                                       ConfigVarType(self.context, str)),
+                     {},
                      """Environment variables to set for building this config.
 
                      This may include settings of PATH and LD_LIBRARY_PATH;
@@ -212,18 +343,21 @@ class ConfigVarGroup:
                      of those build tasks.""")
         for component in self.context.components:
             group = self.add_group(component, None)
-            group.add_var('configure_opts', [],
+            group.add_var('configure_opts',
+                          ConfigVarTypeList(ConfigVarType(self.context, str)),
+                          [],
                           """Options to pass to 'configure' for this component.
 
                           If this component does not use a configure-based
                           build, this variable is ignored.""")
-            group.add_var('vc', None,
+            group.add_var('vc', ConfigVarType(self.context, sourcery.vc.VC),
+                          None,
                           """The version control location (a VC object) from
                           which sources for this component are checked out.
 
                           If source_type for a component is 'none', this does
                           not need to be specified.""")
-            group.add_var('version', None,
+            group.add_var('version', ConfigVarType(self.context, str), None,
                           """A version number or name for this component, as
                           used in source directory names.
 
@@ -231,7 +365,10 @@ class ConfigVarGroup:
                           significance beyond its use in source directory
                           names.  If source_type for a component is 'none',
                           this does not need to be specified.""")
-            group.add_var('source_type', None,
+            group.add_var('source_type',
+                          ConfigVarTypeStrEnum(self.context,
+                                               {'open', 'closed', 'none'}),
+                          None,
                           """One of 'open', 'closed' or 'none',
 
                           If 'open', sources for this component are packaged in
@@ -243,7 +380,8 @@ class ConfigVarGroup:
                           components may, for example, serve to represent part
                           of the implementation of the build with no sources
                           outside of Sourcery Builder).""")
-            group.add_var('srcdirname', component,
+            group.add_var('srcdirname', ConfigVarType(self.context, str),
+                          component,
                           """A prefix to use in names of source directories.
 
                           This is used together with the specified version
@@ -384,7 +522,7 @@ class ReleaseConfig:
         """Initialize the ReleaseConfig from a file."""
         self.args = args
         self.context = context
-        self._vg = ConfigVarGroup(context)
+        self._vg = ConfigVarGroup(context, '')
         self._vg.add_release_config_vars()
         self._components = set()
         loader.load_config(self, release_config)
@@ -407,29 +545,32 @@ class ReleaseConfig:
         self.hosts.set_implicit(hlist_new)
         installdir = self.installdir.get()
         installdir_rel = installdir[1:]
-        self._vg.add_var('installdir_rel', installdir_rel,
+        self._vg.add_var('installdir_rel', ConfigVarType(self.context, str),
+                         installdir_rel,
                          """Internal variable: installdir without the leading
                          '/'.""")
-        self._vg.add_var('bindir', os.path.join(installdir, 'bin'),
+        self._vg.add_var('bindir', ConfigVarType(self.context, str),
+                         os.path.join(installdir, 'bin'),
                          """Internal variable: configured directory for host
                          binaries (starting with installdir).""")
-        self._vg.add_var('bindir_rel', os.path.join(installdir_rel, 'bin'),
+        self._vg.add_var('bindir_rel', ConfigVarType(self.context, str),
+                         os.path.join(installdir_rel, 'bin'),
                          """Internal variable: bindir without the leading
                          '/'.""")
-        self._vg.add_var('sysroot', '%s/%s/libc' % (installdir,
-                                                    self.target.get()),
+        self._vg.add_var('sysroot', ConfigVarType(self.context, str),
+                         '%s/%s/libc' % (installdir, self.target.get()),
                          """Internal variable: configured directory for target
                          sysroot (starting with installdir).
 
                          This sysroot is the top-level sysroot, which may have
                          many sysroot subdirectories used for different
                          multilibs.""")
-        self._vg.add_var('sysroot_rel', '%s/%s/libc' % (installdir_rel,
-                                                        self.target.get()),
+        self._vg.add_var('sysroot_rel', ConfigVarType(self.context, str),
+                         '%s/%s/libc' % (installdir_rel, self.target.get()),
                          """Internal variable: sysroot without the leading
                          '/'.""")
-        self._vg.add_var('info_dir_rel', os.path.join(installdir_rel,
-                                                      'share/info/dir'),
+        self._vg.add_var('info_dir_rel', ConfigVarType(self.context, str),
+                         os.path.join(installdir_rel, 'share/info/dir'),
                          """Internal variable: configured location of the info
                          directory (starting with installdir_rel).
 
@@ -448,7 +589,8 @@ class ReleaseConfig:
             if c_vars.source_type.get() != 'none':
                 c_srcdir = '%s-%s' % (c_vars.srcdirname.get(),
                                       c_vars.version.get())
-                c_vars.add_var('srcdir', os.path.join(args.srcdir, c_srcdir),
+                c_vars.add_var('srcdir', ConfigVarType(self.context, str),
+                               os.path.join(args.srcdir, c_srcdir),
                                """Internal variable: source directory for this
                                component.""")
         self._components_full = tuple(self._components_full)

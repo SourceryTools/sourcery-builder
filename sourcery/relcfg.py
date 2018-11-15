@@ -147,9 +147,11 @@ class ConfigVar:
 
     """
 
-    def __init__(self, name, var_type, value, doc):
+    def __init__(self, context, name, var_type, value, doc):
         """Initialize a ConfigVar object."""
+        self.context = context
         self._name = name
+        self._finalized = False
         if isinstance(value, ConfigVar):
             self._type = value._type
             self._value = value._value
@@ -161,8 +163,15 @@ class ConfigVar:
             self._explicit = False
             self.__doc__ = doc
 
+    def _require_not_finalized(self):
+        """Require a function to be called only before finalization."""
+        if self._finalized:
+            self.context.error('release config variable %s modified after '
+                               'finalization' % self._name)
+
     def set(self, value):
         """Set the value of a ConfigVar object."""
+        self._require_not_finalized()
         self._value = self._type.check(self._name, value)
         self._explicit = True
 
@@ -176,6 +185,7 @@ class ConfigVar:
         not for direct use by release configs.
 
         """
+        self._require_not_finalized()
         self._value = self._type.check(self._name, value)
 
     def get(self):
@@ -185,6 +195,15 @@ class ConfigVar:
     def get_explicit(self):
         """Return whether a ConfigVar object was explicitly set."""
         return self._explicit
+
+    def finalize(self):
+        """Finalize this variable.
+
+        Finalization disallows future changes to a variable's value,
+        and is run automatically after reading a release config.
+
+        """
+        self._finalized = True
 
 
 class ConfigVarGroup:
@@ -202,6 +221,7 @@ class ConfigVarGroup:
         """Initialize a ConfigVarGroup object."""
         self.context = context
         self._name = name
+        self._finalized = False
         self._vars = {}
         self._vargroups = {}
         if name:
@@ -211,8 +231,8 @@ class ConfigVarGroup:
         if copy is not None:
             for var in copy._vars:
                 var_name = '%s%s' % (self._name_prefix, var)
-                self._vars[var] = ConfigVar(var_name, None, copy._vars[var],
-                                            None)
+                self._vars[var] = ConfigVar(context, var_name, None,
+                                            copy._vars[var], None)
             for var in copy._vargroups:
                 group_name = '%s%s' % (self._name_prefix, var)
                 self._vargroups[var] = ConfigVarGroup(self.context,
@@ -229,12 +249,15 @@ class ConfigVarGroup:
 
     def add_var(self, name, var_type, value, doc):
         """Add a variable to a ConfigVarGroup."""
+        if self._finalized:
+            self.context.error('variable %s defined after finalization' % name)
         if name in self._vars:
             self.context.error('duplicate variable %s' % name)
         if name in self._vargroups:
             self.context.error('variable %s duplicates group' % name)
         var_name = '%s%s' % (self._name_prefix, name)
-        self._vars[name] = ConfigVar(var_name, var_type, value, doc)
+        self._vars[name] = ConfigVar(self.context, var_name, var_type, value,
+                                     doc)
 
     def add_group(self, name, copy):
         """Add a ConfigVarGroup to a ConfigVarGroup.
@@ -242,6 +265,9 @@ class ConfigVarGroup:
         For example, for variables for a component.
 
         """
+        if self._finalized:
+            self.context.error('variable group %s defined after finalization'
+                               % name)
         if name in self._vargroups:
             self.context.error('duplicate variable group %s' % name)
         if name in self._vars:
@@ -253,6 +279,20 @@ class ConfigVarGroup:
     def list_vars(self):
         """Return a list of the variables in this ConfigVarGroup."""
         return sorted(self._vars.keys())
+
+    def finalize(self):
+        """Finalize this ConfigVarGroup.
+
+        Finalization disallows future changes to this group, or groups
+        or variables therein, and is run automatically after reading a
+        release config.
+
+        """
+        self._finalized = True
+        for var in self._vars:
+            self._vars[var].finalize()
+        for var in self._vargroups:
+            self._vargroups[var].finalize()
 
     def add_release_config_vars(self):
         """Set up a ConfigVarGroup to store variables for a release config.
@@ -594,6 +634,7 @@ class ReleaseConfig:
                                """Internal variable: source directory for this
                                component.""")
         self._components_full = tuple(self._components_full)
+        self._vg.finalize()
 
     def __getattr__(self, name):
         """Return a variable or group thereof from a release config."""

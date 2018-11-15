@@ -33,7 +33,7 @@ class ConfigVarTypeTestCase(unittest.TestCase):
     """Test the ConfigVarType class and subclasses."""
 
     def setUp(self):
-        """Set up a version control test."""
+        """Set up a ConfigVarType test."""
         self.context = ScriptContext()
 
     def test_init(self):

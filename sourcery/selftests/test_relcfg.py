@@ -161,7 +161,7 @@ class ConfigVarTypeTestCase(unittest.TestCase):
 
 class ConfigVarTestCase(unittest.TestCase):
 
-    """Test the ConfigVar class and subclasses."""
+    """Test the ConfigVar class."""
 
     def setUp(self):
         """Set up a ConfigVar test."""

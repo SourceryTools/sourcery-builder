@@ -280,6 +280,10 @@ class ConfigVarGroup:
         """Return a list of the variables in this ConfigVarGroup."""
         return sorted(self._vars.keys())
 
+    def list_groups(self):
+        """Return a list of the groups in this ConfigVarGroup."""
+        return sorted(self._vargroups.keys())
+
     def finalize(self):
         """Finalize this ConfigVarGroup.
 

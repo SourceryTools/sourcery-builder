@@ -23,9 +23,10 @@ import unittest
 
 from sourcery.context import ScriptContext, ScriptError
 from sourcery.relcfg import ConfigVarType, ConfigVarTypeList, \
-    ConfigVarTypeDict, ConfigVarTypeStrEnum, ConfigVar
+    ConfigVarTypeDict, ConfigVarTypeStrEnum, ConfigVar, ConfigVarGroup
 
-__all__ = ['ConfigVarTypeTestCase', 'ConfigVarTestCase']
+__all__ = ['ConfigVarTypeTestCase', 'ConfigVarTestCase',
+           'ConfigVarGroupTestCase']
 
 
 class ConfigVarTypeTestCase(unittest.TestCase):
@@ -288,3 +289,217 @@ class ConfigVarTestCase(unittest.TestCase):
         var.finalize()
         self.assertEqual(var.get(), ('a', 'b'))
         self.assertTrue(var.get_explicit())
+
+
+class ConfigVarGroupTestCase(unittest.TestCase):
+
+    """Test the ConfigVarGroup class."""
+
+    def setUp(self):
+        """Set up a ConfigVarGroup test."""
+        self.context = ScriptContext()
+
+    def test_init(self):
+        """Test ConfigVarGroup.__init__."""
+        # These and other tests also effectively cover the __getattr__
+        # method without there being anything further to test
+        # separately for that method.
+        group = ConfigVarGroup(self.context, '')
+        self.assertEqual(group.context, self.context)
+        self.assertEqual(group.list_vars(), [])
+        self.assertEqual(group.list_groups(), [])
+        # Test copying from another ConfigVarGroup.
+        cvtype = ConfigVarType(self.context, str)
+        group2 = ConfigVarGroup(self.context, 'abc')
+        group2.add_var('test_var', cvtype, 123, 'test-doc')
+        group2.add_group('test_group', None)
+        group2.test_group.add_var('var2', cvtype, 456, 'doc2')
+        group = ConfigVarGroup(self.context, 'def', group2)
+        self.assertEqual(group.list_vars(), ['test_var'])
+        self.assertEqual(group.list_groups(), ['test_group'])
+        self.assertEqual(group.test_group.list_vars(), ['var2'])
+        self.assertEqual(group.test_group.list_groups(), [])
+        self.assertEqual(group.test_var.get(), 123)
+        self.assertEqual(group.test_group.var2.get(), 456)
+        # The name is that passed to __init__, not that of the copied
+        # group.
+        group.finalize()
+        self.assertRaisesRegex(ScriptError,
+                               r'release config variable def\.test_var '
+                               r'modified after finalization',
+                               group.test_var.set, 'value')
+        # Finalized state is separate from that for the copied group.
+        group2.test_var.set('value')
+        self.assertEqual(group2.test_var.get(), 'value')
+        # Finalized state is not copied.
+        group2.finalize()
+        group = ConfigVarGroup(self.context, 'def', group2)
+        self.assertEqual(group.list_vars(), ['test_var'])
+        self.assertEqual(group.list_groups(), ['test_group'])
+        self.assertEqual(group.test_group.list_vars(), ['var2'])
+        self.assertEqual(group.test_group.list_groups(), [])
+        self.assertEqual(group.test_var.get(), 'value')
+        self.assertEqual(group.test_group.var2.get(), 456)
+        group.test_var.set('value2')
+        self.assertEqual(group.test_var.get(), 'value2')
+        group.add_var('another', cvtype, 'test', 'doc')
+        self.assertEqual(group.another.get(), 'test')
+
+    def test_add_var(self):
+        """Test ConfigVarGroup.add_var."""
+        group = ConfigVarGroup(self.context, '')
+        cvtype = ConfigVarType(self.context, str)
+        group.add_var('var_name', cvtype, 123, 'test-doc')
+        self.assertEqual(group.list_vars(), ['var_name'])
+        self.assertEqual(group.list_groups(), [])
+        self.assertEqual(group.var_name.get(), 123)
+        self.assertFalse(group.var_name.get_explicit())
+        self.assertEqual(group.var_name.__doc__, 'test-doc')
+        group.var_name.set('xyz')
+        self.assertEqual(group.var_name.get(), 'xyz')
+        self.assertTrue(group.var_name.get_explicit())
+        # Test copying variables.
+        group.add_var('copied', None, group.var_name, None)
+        self.assertEqual(group.copied.get(), 'xyz')
+        self.assertTrue(group.copied.get_explicit())
+        # Test constructed variable names.
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config '
+                               'variable var_name',
+                               group.var_name.set, 123)
+        group = ConfigVarGroup(self.context, 'abc')
+        group.add_var('var_name', cvtype, 123, 'test-doc')
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable abc\.var_name',
+                               group.var_name.set, 123)
+
+    def test_add_var_errors(self):
+        """Test errors from ConfigVarGroup.add_var."""
+        group = ConfigVarGroup(self.context, '')
+        cvtype = ConfigVarType(self.context, str)
+        group.finalize()
+        self.assertRaisesRegex(ScriptError,
+                               'variable var_name defined after finalization',
+                               group.add_var, 'var_name', cvtype, 123,
+                               'test-doc')
+        group = ConfigVarGroup(self.context, '')
+        group.add_var('var_name', cvtype, 123, 'test-doc')
+        self.assertRaisesRegex(ScriptError,
+                               'duplicate variable var_name',
+                               group.add_var, 'var_name', cvtype, 123,
+                               'test-doc')
+        group.add_group('group_name', None)
+        self.assertRaisesRegex(ScriptError,
+                               'variable group_name duplicates group',
+                               group.add_var, 'group_name', cvtype, 123,
+                               'test-doc')
+
+    def test_add_group(self):
+        """Test ConfigVarGroup.add_group."""
+        group = ConfigVarGroup(self.context, '')
+        cvtype = ConfigVarType(self.context, str)
+        sub = group.add_group('sub', None)
+        sub.add_var('var_name', cvtype, 123, 'test-doc')
+        self.assertEqual(group.list_vars(), [])
+        self.assertEqual(group.list_groups(), ['sub'])
+        self.assertEqual(sub, group.sub)
+        self.assertEqual(sub.list_vars(), ['var_name'])
+        self.assertEqual(sub.list_groups(), [])
+        # Test copying groups.
+        sub2 = group.add_group('sub2', sub)
+        self.assertEqual(group.list_vars(), [])
+        self.assertEqual(group.list_groups(), ['sub', 'sub2'])
+        self.assertEqual(sub2, group.sub2)
+        self.assertEqual(sub2.list_vars(), ['var_name'])
+        self.assertEqual(sub2.list_groups(), [])
+        sub2.var_name.set('bcd')
+        self.assertEqual(group.sub.var_name.get(), 123)
+        self.assertEqual(group.sub2.var_name.get(), 'bcd')
+        # Test constructed group names.
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable sub\.var_name',
+                               group.sub.var_name.set, 123)
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable sub2\.var_name',
+                               group.sub2.var_name.set, 123)
+        another = sub.add_group('another', None)
+        another.add_var('x', cvtype, 123, '')
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable sub\.another\.x',
+                               group.sub.another.x.set, 123)
+
+    def test_add_group_errors(self):
+        """Test errors from ConfigVarGroup.add_group."""
+        group = ConfigVarGroup(self.context, '')
+        cvtype = ConfigVarType(self.context, str)
+        group.finalize()
+        self.assertRaisesRegex(ScriptError,
+                               'variable group x defined after finalization',
+                               group.add_group, 'x', None)
+        group = ConfigVarGroup(self.context, '')
+        group.add_group('x', None)
+        self.assertRaisesRegex(ScriptError,
+                               'duplicate variable group x',
+                               group.add_group, 'x', None)
+        group.add_var('y', cvtype, 'test', 'doc')
+        self.assertRaisesRegex(ScriptError,
+                               'variable group y duplicates variable',
+                               group.add_group, 'y', None)
+
+    def test_list_vars(self):
+        """Test ConfigVarGroup.list_vars."""
+        group = ConfigVarGroup(self.context, '')
+        cvtype = ConfigVarType(self.context, str)
+        group.add_var('z', cvtype, 'test', 'doc')
+        group.add_var('a', cvtype, 'test', 'doc')
+        group.add_var('y', cvtype, 'test', 'doc')
+        group.add_var('b', cvtype, 'test', 'doc')
+        group.add_group('c', None)
+        self.assertEqual(group.list_vars(), ['a', 'b', 'y', 'z'])
+
+    def test_list_groups(self):
+        """Test ConfigVarGroup.list_groups."""
+        group = ConfigVarGroup(self.context, '')
+        cvtype = ConfigVarType(self.context, str)
+        group.add_group('z', None)
+        group.add_group('a', None)
+        group.add_group('y', None)
+        group.add_group('b', None)
+        group.add_var('c', cvtype, 'test', 'doc')
+        self.assertEqual(group.list_groups(), ['a', 'b', 'y', 'z'])
+
+    def test_finalize(self):
+        """Test ConfigVarGroup.finalize."""
+        group = ConfigVarGroup(self.context, '')
+        cvtype = ConfigVarType(self.context, str)
+        sub1 = group.add_group('sub1', None)
+        sub2 = sub1.add_group('sub2', None)
+        sub3 = sub2.add_group('sub3', None)
+        group.add_var('var1', cvtype, 'val1', 'doc1')
+        sub1.add_var('var2', cvtype, 'val2', 'doc2')
+        sub2.add_var('var3', cvtype, 'val3', 'doc3')
+        sub3.add_var('var4', cvtype, 'val4', 'doc4')
+        group.finalize()
+        self.assertRaisesRegex(ScriptError,
+                               'release config variable var1 modified '
+                               'after finalization',
+                               group.var1.set, 'new')
+        self.assertRaisesRegex(ScriptError,
+                               r'release config variable '
+                               r'sub1\.sub2\.sub3\.var4 modified after '
+                               'finalization',
+                               group.sub1.sub2.sub3.var4.set, 'new')
+        self.assertRaisesRegex(ScriptError,
+                               'variable var_new defined after finalization',
+                               group.sub1.sub2.add_var, 'var_new', cvtype,
+                               'val_new', 'doc-new')
+        # Can finalize more than once.
+        group.finalize()
+        self.assertRaisesRegex(ScriptError,
+                               'release config variable var1 modified '
+                               'after finalization',
+                               group.var1.set, 'new')

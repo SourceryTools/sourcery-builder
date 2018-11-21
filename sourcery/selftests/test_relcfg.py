@@ -18,15 +18,26 @@
 
 """Test sourcery.relcfg."""
 
+import argparse
 import collections
+import os
+import os.path
+import tempfile
 import unittest
 
-from sourcery.context import ScriptContext, ScriptError
+from sourcery.buildcfg import BuildCfg
+from sourcery.context import add_common_options, ScriptContext, ScriptError
+from sourcery.pkghost import PkgHost
 from sourcery.relcfg import ConfigVarType, ConfigVarTypeList, \
-    ConfigVarTypeDict, ConfigVarTypeStrEnum, ConfigVar, ConfigVarGroup
+    ConfigVarTypeDict, ConfigVarTypeStrEnum, ConfigVar, ConfigVarGroup, \
+    ComponentInConfig, add_release_config_arg, ReleaseConfigPathLoader, \
+    ReleaseConfigTextLoader, ReleaseConfig
+import sourcery.selftests.components.generic
+from sourcery.vc import GitVC, SvnVC, TarVC
 
 __all__ = ['ConfigVarTypeTestCase', 'ConfigVarTestCase',
-           'ConfigVarGroupTestCase']
+           'ConfigVarGroupTestCase', 'ComponentInConfigTestCase',
+           'AddReleaseConfigArgTestCase', 'ReleaseConfigLoaderTestCase']
 
 
 class ConfigVarTypeTestCase(unittest.TestCase):
@@ -297,7 +308,7 @@ class ConfigVarGroupTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up a ConfigVarGroup test."""
-        self.context = ScriptContext()
+        self.context = ScriptContext(['sourcery.selftests'])
 
     def test_init(self):
         """Test ConfigVarGroup.__init__."""
@@ -503,3 +514,256 @@ class ConfigVarGroupTestCase(unittest.TestCase):
                                'release config variable var1 modified '
                                'after finalization',
                                group.var1.set, 'new')
+
+    def test_add_release_config_vars(self):
+        """Test ConfigVarGroup.add_release_config_vars."""
+        group = ConfigVarGroup(self.context, '')
+        group.add_release_config_vars()
+        # Test the list of release config variables.
+        self.assertEqual(group.list_vars(),
+                         ['build', 'env_set', 'hosts', 'installdir', 'interp',
+                          'script_full', 'target'])
+        # Test each variable's default value and type constraints.
+        self.assertIsNone(group.build.get())
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'build',
+                               group.build.set, None)
+        group.build.set('aarch64-linux-gnu')
+        group.build.set(PkgHost(self.context, 'i686-pc-linux-gnu'))
+        self.assertEqual(group.env_set.get(), {})
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'env_set',
+                               group.env_set.set, {'X': 1})
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'env_set',
+                               group.env_set.set, {2: 'X'})
+        group.env_set.set({'A': 'B'})
+        self.assertIsNone(group.hosts.get())
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'hosts',
+                               group.hosts.set, None)
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'hosts',
+                               group.hosts.set, [1])
+        group.hosts.set(['x86_64-linux-gnu', 'aarch64-linux-gnu'])
+        group.hosts.set([PkgHost(self.context, 'powerpc64le-linux-gnu')])
+        self.assertEqual(group.installdir.get(), '/opt/toolchain')
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'installdir',
+                               group.installdir.set, None)
+        group.installdir.set('/some/where')
+        self.assertEqual(group.interp.get(), self.context.interp)
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'interp',
+                               group.interp.set, None)
+        group.interp.set('/path/to/python3')
+        self.assertEqual(group.script_full.get(), self.context.script_full)
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'script_full',
+                               group.script_full.set, 12345)
+        group.script_full.set('/some/where/sourcery-builder')
+        self.assertIsNone(group.target.get())
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'target',
+                               group.target.set, None)
+        group.target.set('x86_64-w64-mingw32')
+        # Test the list of components.
+        self.assertEqual(group.list_groups(),
+                         sorted(self.context.components.keys()))
+        # Test the list of per-component variables.
+        self.assertEqual(group.generic.list_vars(),
+                         ['configure_opts', 'source_type', 'srcdirname',
+                          'vc', 'version'])
+        # Test each component variable's default value and type
+        # constraints.
+        self.assertEqual(group.no_add_rel_cfg_vars.configure_opts.get(), [])
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable no_add_rel_cfg_vars\.configure_opts',
+                               group.no_add_rel_cfg_vars.configure_opts.set,
+                               [1, 2])
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable no_add_rel_cfg_vars\.configure_opts',
+                               group.no_add_rel_cfg_vars.configure_opts.set,
+                               '--option')
+        group.no_add_rel_cfg_vars.configure_opts.set(['--a', '--b'])
+        group.no_add_rel_cfg_vars.configure_opts.set(('--c',))
+        self.assertIsNone(group.no_add_rel_cfg_vars.source_type.get())
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable no_add_rel_cfg_vars\.source_type',
+                               group.no_add_rel_cfg_vars.source_type.set,
+                               None)
+        self.assertRaisesRegex(ScriptError,
+                               r'bad value for release config '
+                               r'variable no_add_rel_cfg_vars\.source_type',
+                               group.no_add_rel_cfg_vars.source_type.set,
+                               'other')
+        group.no_add_rel_cfg_vars.source_type.set('open')
+        group.no_add_rel_cfg_vars.source_type.set('closed')
+        group.no_add_rel_cfg_vars.source_type.set('none')
+        self.assertEqual(group.no_add_rel_cfg_vars.srcdirname.get(),
+                         'no_add_rel_cfg_vars')
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable no_add_rel_cfg_vars\.srcdirname',
+                               group.no_add_rel_cfg_vars.srcdirname.set,
+                               None)
+        group.no_add_rel_cfg_vars.srcdirname.set('other-name')
+        self.assertIsNone(group.no_add_rel_cfg_vars.vc.get())
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable no_add_rel_cfg_vars\.vc',
+                               group.no_add_rel_cfg_vars.vc.set,
+                               None)
+        group.no_add_rel_cfg_vars.vc.set(GitVC(self.context, '/some/where'))
+        group.no_add_rel_cfg_vars.vc.set(SvnVC(self.context,
+                                               'file:///some/where'))
+        group.no_add_rel_cfg_vars.vc.set(TarVC(self.context,
+                                               '/some/where.tar'))
+        self.assertIsNone(group.no_add_rel_cfg_vars.version.get())
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable no_add_rel_cfg_vars\.version',
+                               group.no_add_rel_cfg_vars.version.set,
+                               None)
+        group.no_add_rel_cfg_vars.version.set('123.456a')
+        # Test use of add_release_config_vars hook, for changing
+        # existing variables and adding new ones.
+        self.assertEqual(group.generic.source_type.get(), 'open')
+        self.assertEqual(group.add_rel_cfg_vars.extra_var.get(), 'value')
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable add_rel_cfg_vars\.extra_var',
+                               group.add_rel_cfg_vars.extra_var.set,
+                               None)
+        group.add_rel_cfg_vars.extra_var.set('other value')
+
+
+class ComponentInConfigTestCase(unittest.TestCase):
+
+    """Test the ComponentInConfig class."""
+
+    def setUp(self):
+        """Set up a ComponentInConfig test."""
+        self.context = ScriptContext(['sourcery.selftests'])
+
+    def test_init(self):
+        """Test ComponentInConfig.__init__."""
+        group = ConfigVarGroup(self.context, 'name')
+        component = ComponentInConfig(
+            'generic', 'second', group,
+            sourcery.selftests.components.generic.Component)
+        self.assertEqual(component.orig_name, 'generic')
+        self.assertEqual(component.copy_name, 'second')
+        self.assertEqual(component.vars, group)
+        self.assertEqual(component.cls,
+                         sourcery.selftests.components.generic.Component)
+
+
+class AddReleaseConfigArgTestCase(unittest.TestCase):
+
+    """Test the add_release_config_arg function."""
+
+    def test_add_release_config_arg(self):
+        """Test add_release_config_arg."""
+        parser = argparse.ArgumentParser()
+        add_release_config_arg(parser)
+        args = parser.parse_args(['test.cfg'])
+        self.assertEqual(args.release_config, 'test.cfg')
+
+
+class ReleaseConfigLoaderTestCase(unittest.TestCase):
+
+    """Test the ReleaseConfigLoader class and subclasses."""
+
+    def setUp(self):
+        """Set up a release config test."""
+        self.context = ScriptContext(['sourcery.selftests'])
+        self.parser = argparse.ArgumentParser()
+        add_common_options(self.parser, os.getcwd())
+        self.tempdir_td = tempfile.TemporaryDirectory()
+        self.tempdir = self.tempdir_td.name
+
+    def tearDown(self):
+        """Tear down a release config test."""
+        self.tempdir_td.cleanup()
+
+    def temp_config_file(self):
+        """Return the path to the test config file."""
+        return os.path.join(self.tempdir, 'test.cfg')
+
+    def temp_config_write(self, text):
+        """Write text to the test config file."""
+        with open(self.temp_config_file(), 'w', encoding='utf-8') as file:
+            file.write(text)
+
+    def test_load_config_text(self):
+        """Test load_config, ReleaseConfigTextLoader case."""
+        # get_config_text, add_cfg_vars_extra and
+        # get_context_wrap_extra are interfaces for subclasses to
+        # override and are not useful to test directly.  Here we test
+        # the main functionality of loading configs (but not the work
+        # done in the ReleaseConfig class).
+        loader = ReleaseConfigTextLoader()
+        args = self.parser.parse_args([])
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, args)
+        self.assertIsInstance(relcfg.generic.vc.get(), GitVC)
+        self.assertEqual(relcfg.generic.version.get(), '1.23')
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(SvnVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set(PkgHost("x86_64-linux-gnu"))\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, args)
+        self.assertIsInstance(relcfg.generic.vc.get(), SvnVC)
+        self.assertIsInstance(relcfg.build.get(), PkgHost)
+        self.assertEqual(relcfg.build.get().name, 'x86_64-linux-gnu')
+        self.assertEqual(relcfg.build.get().context, self.context)
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set(PkgHost("x86_64-linux-gnu", '
+                       'BuildCfg("x86_64-linux-gnu", "x86_64-linux-gnu", '
+                       '"i686-pc-linux-gnu-", ("-m64", ))))\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, args)
+        self.assertIsInstance(relcfg.generic.vc.get(), TarVC)
+        build_cfg = relcfg.build.get().build_cfg
+        self.assertIsInstance(build_cfg, BuildCfg)
+        self.assertEqual(build_cfg.tool('gcc'),
+                         ['i686-pc-linux-gnu-gcc', '-m64'])
+
+    def test_load_config_path(self):
+        """Test load_config, ReleaseConfigPathLoader case."""
+        # This specifically tests the loading of configs from files,
+        # with the detailed testing of how contents of configs are
+        # handled (e.g., names defined when reading a config) being
+        # done in test_load_config_text and elsewhere.
+        loader = ReleaseConfigPathLoader()
+        args = self.parser.parse_args([])
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        self.temp_config_write(relcfg_text)
+        relcfg = ReleaseConfig(self.context, self.temp_config_file(), loader,
+                               args)
+        self.assertIsInstance(relcfg.generic.vc.get(), GitVC)
+        self.assertEqual(relcfg.generic.version.get(), '1.23')

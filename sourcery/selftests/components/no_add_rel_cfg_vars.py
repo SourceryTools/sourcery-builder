@@ -1,4 +1,4 @@
-# Initialize sourcery.selftests.components package.
+# sourcery-builder no_add_rel_cfg_vars component for testing.
 
 # Copyright 2018 Mentor Graphics Corporation.
 
@@ -16,10 +16,12 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder selftests.components package."""
+"""sourcery-builder no_add_rel_cfg_vars component for testing."""
 
-__all__ = ['add_rel_cfg_vars', 'build_fail_cd', 'build_fail_command',
-           'build_fail_python', 'build_install_tree', 'build_log',
-           'build_test', 'configure_opts', 'files_to_touch',
-           'files_to_touch_glob', 'generic', 'no_add_rel_cfg_vars',
-           'postcheckout']
+import sourcery.component
+
+__all__ = ['Component']
+
+
+class Component(sourcery.component.Component):
+    """no_add_rel_cfg_vars component implementation."""

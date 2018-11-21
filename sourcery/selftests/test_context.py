@@ -50,6 +50,7 @@ class ContextTestCase(unittest.TestCase):
         self.tempdir = self.tempdir_td.name
 
     def tearDown(self):
+        """Tear down a context test."""
         self.tempdir_td.cleanup()
 
     def temp_file(self, name):

@@ -314,7 +314,7 @@ class ConfigVarGroupTestCase(unittest.TestCase):
         """Test ConfigVarGroup.__init__."""
         # These and other tests also effectively cover the __getattr__
         # method without there being anything further to test
-        # separately for that method.
+        # separately for that method other than errors from it.
         group = ConfigVarGroup(self.context, '')
         self.assertEqual(group.context, self.context)
         self.assertEqual(group.list_vars(), [])
@@ -355,6 +355,13 @@ class ConfigVarGroupTestCase(unittest.TestCase):
         self.assertEqual(group.test_var.get(), 'value2')
         group.add_var('another', cvtype, 'test', 'doc')
         self.assertEqual(group.another.get(), 'test')
+
+    def test_getattr_errors(self):
+        """Test errors from ConfigVarGroup.__getattr__."""
+        group = ConfigVarGroup(self.context, '')
+        self.assertRaisesRegex(AttributeError,
+                               'no_such_var_or_component',
+                               getattr, group, 'no_such_var_or_component')
 
     def test_add_var(self):
         """Test ConfigVarGroup.add_var."""

@@ -767,3 +767,98 @@ class ReleaseConfigLoaderTestCase(unittest.TestCase):
                                args)
         self.assertIsInstance(relcfg.generic.vc.get(), GitVC)
         self.assertEqual(relcfg.generic.version.get(), '1.23')
+
+
+class ReleaseConfigTestCase(unittest.TestCase):
+
+    """Test the ReleaseConfig class."""
+
+    def setUp(self):
+        """Set up a ReleaseConfig test."""
+        self.context = ScriptContext(['sourcery.selftests'])
+        self.parser = argparse.ArgumentParser()
+        add_common_options(self.parser, os.getcwd())
+        self.args = self.parser.parse_args([])
+
+    def test_init(self):
+        """Test ReleaseConfig.__init__."""
+        # __getattr__ is effectively covered by this and other tests,
+        # so not tested separately.
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.args, self.args)
+        self.assertEqual(relcfg.context, self.context)
+        # Verify build and hosts settings.
+        self.assertIsInstance(relcfg.build.get(), PkgHost)
+        self.assertEqual(relcfg.build.get().name, 'x86_64-linux-gnu')
+        self.assertEqual(len(relcfg.hosts.get()), 1)
+        self.assertIsInstance(relcfg.hosts.get()[0], PkgHost)
+        self.assertIs(relcfg.hosts.get()[0], relcfg.build.get())
+        # Test case of hosts set explicitly using strings: verify same
+        # PkgHost object used as first host.
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.hosts.set(("x86_64-linux-gnu", '
+                       '"x86_64-w64-mingw32"))\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertIsInstance(relcfg.build.get(), PkgHost)
+        self.assertEqual(relcfg.build.get().name, 'x86_64-linux-gnu')
+        self.assertEqual(len(relcfg.hosts.get()), 2)
+        self.assertIsInstance(relcfg.hosts.get()[0], PkgHost)
+        self.assertIs(relcfg.hosts.get()[0], relcfg.build.get())
+        self.assertIsInstance(relcfg.hosts.get()[1], PkgHost)
+        self.assertEqual(relcfg.hosts.get()[1].name, 'x86_64-w64-mingw32')
+        # Test case of PkgHost objects used directly for build and
+        # hosts.
+        relcfg_text = ('build = PkgHost("x86_64-linux-gnu")\n'
+                       'cfg.build.set(build)\n'
+                       'cfg.hosts.set((build, PkgHost("i686-pc-linux-gnu")))\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertIsInstance(relcfg.build.get(), PkgHost)
+        self.assertEqual(relcfg.build.get().name, 'x86_64-linux-gnu')
+        self.assertEqual(len(relcfg.hosts.get()), 2)
+        self.assertIsInstance(relcfg.hosts.get()[0], PkgHost)
+        self.assertIs(relcfg.hosts.get()[0], relcfg.build.get())
+        self.assertIsInstance(relcfg.hosts.get()[1], PkgHost)
+        self.assertEqual(relcfg.hosts.get()[1].name, 'i686-pc-linux-gnu')
+        # Test internal variables set by __init__.
+        self.assertEqual(relcfg.installdir_rel.get(), 'opt/toolchain')
+        self.assertEqual(relcfg.bindir.get(), '/opt/toolchain/bin')
+        self.assertEqual(relcfg.bindir_rel.get(), 'opt/toolchain/bin')
+        self.assertEqual(relcfg.sysroot.get(),
+                         '/opt/toolchain/aarch64-linux-gnu/libc')
+        self.assertEqual(relcfg.sysroot_rel.get(),
+                         'opt/toolchain/aarch64-linux-gnu/libc')
+        self.assertEqual(relcfg.info_dir_rel.get(),
+                         'opt/toolchain/share/info/dir')
+        # Test per-component internal variables set by __init__.
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.generic.srcdir.get(),
+                         os.path.join(self.args.srcdir, 'generic-1.23'))
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("4.56")\n'
+                       'cfg.generic.srcdirname.set("other-name")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.generic.srcdir.get(),
+                         os.path.join(self.args.srcdir, 'other-name-4.56'))
+
+    def test_init_errors(self):
+        """Test errors from ReleaseConfig.__init__."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.hosts.set(("i686-pc-linux-gnu", '
+                       '"x86_64-linux-gnu"))\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        self.assertRaisesRegex(ScriptError,
+                               'first host not the same as build system',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)

@@ -857,6 +857,11 @@ class ReleaseConfigTestCase(unittest.TestCase):
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         self.assertEqual(relcfg.generic.srcdir.get(),
                          os.path.join(self.args.srcdir, 'other-name-4.56'))
+        # Test that the ConfigVarGroup has been finalized.
+        self.assertRaisesRegex(ScriptError,
+                               'release config variable installdir modified '
+                               'after finalization',
+                               relcfg.installdir.set, '/opt/test')
 
     def test_init_errors(self):
         """Test errors from ReleaseConfig.__init__."""

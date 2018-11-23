@@ -147,7 +147,7 @@ class ConfigVar:
 
     """
 
-    def __init__(self, context, name, var_type, value, doc):
+    def __init__(self, context, name, var_type, value, doc, internal=False):
         """Initialize a ConfigVar object."""
         self.context = context
         self._name = name
@@ -157,11 +157,13 @@ class ConfigVar:
             self._value = value._value
             self._explicit = value._explicit
             self.__doc__ = value.__doc__
+            self._internal = value._internal
         else:
             self._type = var_type
             self._value = value
             self._explicit = False
             self.__doc__ = doc
+            self._internal = internal
 
     def _require_not_finalized(self):
         """Require a function to be called only before finalization."""
@@ -195,6 +197,16 @@ class ConfigVar:
     def get_explicit(self):
         """Return whether a ConfigVar object was explicitly set."""
         return self._explicit
+
+    def get_internal(self):
+        """Return whether a ConfigVar object is an internal variable.
+
+        Internal variables are only set by logic in the ReleaseConfig
+        class after a release config has been read, never directly by
+        release configs.
+
+        """
+        return self._internal
 
     def finalize(self):
         """Finalize this variable.
@@ -247,7 +259,7 @@ class ConfigVarGroup:
             return self._vargroups[name]
         raise AttributeError(name)
 
-    def add_var(self, name, var_type, value, doc):
+    def add_var(self, name, var_type, value, doc, internal=False):
         """Add a variable to a ConfigVarGroup."""
         if self._finalized:
             self.context.error('variable %s defined after finalization' % name)
@@ -257,7 +269,7 @@ class ConfigVarGroup:
             self.context.error('variable %s duplicates group' % name)
         var_name = '%s%s' % (self._name_prefix, name)
         self._vars[name] = ConfigVar(self.context, var_name, var_type, value,
-                                     doc)
+                                     doc, internal)
 
     def add_group(self, name, copy):
         """Add a ConfigVarGroup to a ConfigVarGroup.
@@ -591,37 +603,40 @@ class ReleaseConfig:
         installdir_rel = installdir[1:]
         self._vg.add_var('installdir_rel', ConfigVarType(self.context, str),
                          installdir_rel,
-                         """Internal variable: installdir without the leading
-                         '/'.""")
+                         """installdir without the leading '/'.""",
+                         internal=True)
         self._vg.add_var('bindir', ConfigVarType(self.context, str),
                          os.path.join(installdir, 'bin'),
-                         """Internal variable: configured directory for host
-                         binaries (starting with installdir).""")
+                         """Configured directory for host binaries (starting
+                         with installdir).""",
+                         internal=True)
         self._vg.add_var('bindir_rel', ConfigVarType(self.context, str),
                          os.path.join(installdir_rel, 'bin'),
-                         """Internal variable: bindir without the leading
-                         '/'.""")
+                         """bindir without the leading '/'.""",
+                         internal=True)
         self._vg.add_var('sysroot', ConfigVarType(self.context, str),
                          '%s/%s/libc' % (installdir, self.target.get()),
-                         """Internal variable: configured directory for target
-                         sysroot (starting with installdir).
+                         """Configured directory for target sysroot (starting
+                         with installdir).
 
                          This sysroot is the top-level sysroot, which may have
                          many sysroot subdirectories used for different
-                         multilibs.""")
+                         multilibs.""",
+                         internal=True)
         self._vg.add_var('sysroot_rel', ConfigVarType(self.context, str),
                          '%s/%s/libc' % (installdir_rel, self.target.get()),
-                         """Internal variable: sysroot without the leading
-                         '/'.""")
+                         """sysroot without the leading '/'.""",
+                         internal=True)
         self._vg.add_var('info_dir_rel', ConfigVarType(self.context, str),
                          os.path.join(installdir_rel, 'share/info/dir'),
-                         """Internal variable: configured location of the info
-                         directory (starting with installdir_rel).
+                         """Configured location of the info directory (starting
+                         with installdir_rel).
 
                          The main purpose of this variable is for use in code
                          that removes the info directory to avoid conflicts
                          between copies installed by different toolchain
-                         components.""")
+                         components.""",
+                         internal=True)
         self._components_full = []
         self._components_full_byname = {}
         for component in sorted(self._components):
@@ -635,8 +650,8 @@ class ReleaseConfig:
                                       c_vars.version.get())
                 c_vars.add_var('srcdir', ConfigVarType(self.context, str),
                                os.path.join(args.srcdir, c_srcdir),
-                               """Internal variable: source directory for this
-                               component.""")
+                               """Source directory for this component.""",
+                               internal=True)
         self._components_full = tuple(self._components_full)
         self._vg.finalize()
 

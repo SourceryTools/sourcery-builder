@@ -183,17 +183,21 @@ class ConfigVarTestCase(unittest.TestCase):
     def test_init(self):
         """Test ConfigVar.__init__."""
         # These tests, and those of set and set_implicit, also
-        # effectively cover the get and get_explicit methods without
-        # there being anything further to test separately for those
-        # methods.
+        # effectively cover the get, get_explicit and get_internal
+        # methods without there being anything further to test
+        # separately for those methods.
         cvtype = ConfigVarTypeList(ConfigVarType(self.context, str))
         var = ConfigVar(self.context, 'test_var', cvtype, None, 'test-doc')
         self.assertEqual(var.context, self.context)
         self.assertEqual(var.__doc__, 'test-doc')
         self.assertIsNone(var.get())
         self.assertFalse(var.get_explicit())
+        self.assertFalse(var.get_internal())
         var = ConfigVar(self.context, 'test_var', cvtype, 123, 'test-doc')
         self.assertEqual(var.get(), 123)
+        var = ConfigVar(self.context, 'test_var', cvtype, 123, 'test-doc',
+                        internal=True)
+        self.assertTrue(var.get_internal())
         # Test copying from another ConfigVar.
         new_context = ScriptContext()
         new_var = ConfigVar(new_context, 'new_name',
@@ -204,6 +208,7 @@ class ConfigVarTestCase(unittest.TestCase):
         self.assertEqual(new_var.get(), 123)
         self.assertEqual(new_var.__doc__, 'test-doc')
         self.assertFalse(new_var.get_explicit())
+        self.assertTrue(new_var.get_internal())
         var.set(['a', 'b'])
         new_var.set(['c', 'd'])
         self.assertEqual(var.get(), ('a', 'b'))

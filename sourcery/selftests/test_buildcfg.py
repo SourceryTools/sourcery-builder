@@ -61,6 +61,34 @@ class BuildCfgTestCase(unittest.TestCase):
                                BuildCfg, self.context, 'i686-pc-linux-gnu',
                                tool_opts={'as': '--64'})
 
+    def test_repr(self):
+        """Test BuildCfg.__repr__."""
+        # Default case.
+        cfg = BuildCfg(self.context, 'aarch64-linux-gnu')
+        self.assertEqual(repr(cfg), "BuildCfg('aarch64-linux-gnu')")
+        cfg = BuildCfg(self.context, 'aarch64-linux-gnu',
+                       name='aarch64-linux-gnu',
+                       tool_prefix='aarch64-linux-gnu-', ccopts=[],
+                       tool_opts={})
+        self.assertEqual(repr(cfg), "BuildCfg('aarch64-linux-gnu')")
+        # Non-default settings.
+        cfg = BuildCfg(self.context, 'aarch64-linux-gnu',
+                       name='aarch64-linux-gnu-name',
+                       tool_prefix='aarch64-linux-gnu-prefix-',
+                       ccopts=['-mx', '-my'],
+                       tool_opts={'ld': ['--ldopt'], 'as': ('--asopt',)})
+        self.assertEqual(repr(cfg),
+                         "BuildCfg('aarch64-linux-gnu', "
+                         "name='aarch64-linux-gnu-name', "
+                         "tool_prefix='aarch64-linux-gnu-prefix-', "
+                         "ccopts=('-mx', '-my'), "
+                         "tool_opts={'as': ('--asopt',), 'ld': ('--ldopt',)})")
+        # Partial default settings.
+        cfg = BuildCfg(self.context, 'aarch64-linux-gnu',
+                       name='aarch64-linux-gnu-ma_b', ccopts=['-ma=b'])
+        self.assertEqual(repr(cfg),
+                         "BuildCfg('aarch64-linux-gnu', ccopts=('-ma=b',))")
+
     def test_is_windows(self):
         """Test the is_windows method."""
         cfg = BuildCfg(self.context, 'i686-mingw32')

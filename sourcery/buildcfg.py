@@ -86,6 +86,27 @@ class BuildCfg:
             self._tool_opts = {key: tuple(value)
                                for key, value in tool_opts.items()}
 
+    def __repr__(self):
+        """Return a textual representation of a BuildCfg object.
+
+        The representation is in the form a BuildCfg call might appear
+        in a release config, omitting the context argument.
+
+        """
+        args = [repr(self.triplet)]
+        if self.name != self._default_name():
+            args.append('name=%s' % repr(self.name))
+        if self._tool_prefix != self._default_tool_prefix():
+            args.append('tool_prefix=%s' % repr(self._tool_prefix))
+        if self._ccopts:
+            args.append('ccopts=%s' % repr(self._ccopts))
+        if self._tool_opts:
+            args.append('tool_opts={%s}'
+                        % ', '.join('%s: %s' % (repr(key), repr(value))
+                                    for key, value in sorted(
+                                            self._tool_opts.items())))
+        return 'BuildCfg(%s)' % ', '.join(args)
+
     def _default_tool_prefix(self):
         """Return the default tool prefix for this triplet."""
         return self.triplet + '-'

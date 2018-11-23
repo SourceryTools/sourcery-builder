@@ -134,6 +134,13 @@ class VCTestCase(unittest.TestCase):
         self.assertRaises(subprocess.CalledProcessError, vc_obj.vc_checkout,
                           self.srcdir, False)
 
+    def test_git_repr(self):
+        """Test GitVC.__repr__."""
+        vc_obj = GitVC(self.context, '/example')
+        self.assertEqual(repr(vc_obj), "GitVC('/example', 'master')")
+        vc_obj = GitVC(self.context, '/example', 'branch')
+        self.assertEqual(repr(vc_obj), "GitVC('/example', 'branch')")
+
     def test_svn(self):
         """Test checkouts from SVN."""
         subprocess.run(['svnadmin', 'create', self.svndir], check=True)
@@ -173,6 +180,11 @@ class VCTestCase(unittest.TestCase):
         shutil.rmtree(self.srcdir)
         self.assertRaises(subprocess.CalledProcessError, vc_obj.vc_checkout,
                           self.srcdir, False)
+
+    def test_svn_repr(self):
+        """Test SvnVC.__repr__."""
+        vc_obj = SvnVC(self.context, 'file:///example')
+        self.assertEqual(repr(vc_obj), "SvnVC('file:///example')")
 
     def test_tar(self):
         """Test checkouts from tarballs."""
@@ -255,6 +267,11 @@ class VCTestCase(unittest.TestCase):
         vc_obj = TarVC(self.context, os.path.join(self.tempdir, 'test.tar'))
         self.assertRaises(subprocess.CalledProcessError, vc_obj.vc_checkout,
                           self.srcdir, False)
+
+    def test_tar_repr(self):
+        """Test TarVC.__repr__."""
+        vc_obj = TarVC(self.context, '/test.tar')
+        self.assertEqual(repr(vc_obj), "TarVC('/test.tar')")
 
 
 class VCRelCfgTestCase(unittest.TestCase):

@@ -92,6 +92,15 @@ class GitVC(VC):
         self._uri = uri
         self._branch = branch
 
+    def __repr__(self):
+        """Return a textual representation of a GitVC object.
+
+        The representation is in the form a GitVC call might appear in
+        a release config, omitting the context argument.
+
+        """
+        return 'GitVC(%s, %s)' % (repr(self._uri), repr(self._branch))
+
     def vc_checkout(self, srcdir, update):
         if update:
             self.context.execute(['git', 'pull', '-q'], cwd=srcdir)
@@ -106,6 +115,15 @@ class SvnVC(VC):
     def __init__(self, context, uri):
         super().__init__(context)
         self._uri = uri
+
+    def __repr__(self):
+        """Return a textual representation of an SvnVC object.
+
+        The representation is in the form an SvcVC call might appear
+        in a release config, omitting the context argument.
+
+        """
+        return 'SvnVC(%s)' % repr(self._uri)
 
     def vc_checkout(self, srcdir, update):
         # To ensure that tagging and branching automatically cover all
@@ -127,6 +145,15 @@ class TarVC(VC):
     def __init__(self, context, path):
         super().__init__(context)
         self._path = path
+
+    def __repr__(self):
+        """Return a textual representation of a TarVC object.
+
+        The representation is in the form a TarVC call might appear in
+        a release config, omitting the context argument.
+
+        """
+        return 'TarVC(%s)' % repr(self._path)
 
     def vc_checkout(self, srcdir, update):
         if update:

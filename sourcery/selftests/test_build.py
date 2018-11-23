@@ -106,8 +106,8 @@ class BuildContextTestCase(unittest.TestCase):
         """Test BuildContext.__init__."""
         self.setup_rc()
         bcontext = self.build_context
-        self.assertEqual(bcontext.context, self.context)
-        self.assertEqual(bcontext.relcfg, self.relcfg)
+        self.assertIs(bcontext.context, self.context)
+        self.assertIs(bcontext.relcfg, self.relcfg)
         self.assertEqual(bcontext.logdir, self.args.logdir)
         self.assertEqual(bcontext.parallelism, self.args.parallelism)
         self.assertEqual(bcontext.build_objdir,

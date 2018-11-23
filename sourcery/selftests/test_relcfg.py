@@ -52,11 +52,11 @@ class ConfigVarTypeTestCase(unittest.TestCase):
     def test_init(self):
         """Test ConfigVarType.__init__."""
         cvtype = ConfigVarType(self.context)
-        self.assertEqual(cvtype.context, self.context)
+        self.assertIs(cvtype.context, self.context)
         cvtype = ConfigVarType(self.context, str)
-        self.assertEqual(cvtype.context, self.context)
+        self.assertIs(cvtype.context, self.context)
         cvtype = ConfigVarType(self.context, list, tuple)
-        self.assertEqual(cvtype.context, self.context)
+        self.assertIs(cvtype.context, self.context)
 
     def test_check(self):
         """Test ConfigVarType.check."""
@@ -188,7 +188,7 @@ class ConfigVarTestCase(unittest.TestCase):
         # separately for those methods.
         cvtype = ConfigVarTypeList(ConfigVarType(self.context, str))
         var = ConfigVar(self.context, 'test_var', cvtype, None, 'test-doc')
-        self.assertEqual(var.context, self.context)
+        self.assertIs(var.context, self.context)
         self.assertEqual(var.__doc__, 'test-doc')
         self.assertIsNone(var.get())
         self.assertFalse(var.get_explicit())
@@ -204,7 +204,7 @@ class ConfigVarTestCase(unittest.TestCase):
                             ConfigVarType(self.context, str), var, 'new-doc')
         # Value, type and doc are copied from the old variable in this
         # case; context is not.
-        self.assertEqual(new_var.context, new_context)
+        self.assertIs(new_var.context, new_context)
         self.assertEqual(new_var.get(), 123)
         self.assertEqual(new_var.__doc__, 'test-doc')
         self.assertFalse(new_var.get_explicit())
@@ -322,7 +322,7 @@ class ConfigVarGroupTestCase(unittest.TestCase):
         # method without there being anything further to test
         # separately for that method other than errors from it.
         group = ConfigVarGroup(self.context, '')
-        self.assertEqual(group.context, self.context)
+        self.assertIs(group.context, self.context)
         self.assertEqual(group.list_vars(), [])
         self.assertEqual(group.list_groups(), [])
         # Test copying from another ConfigVarGroup.
@@ -679,9 +679,9 @@ class ComponentInConfigTestCase(unittest.TestCase):
             sourcery.selftests.components.generic.Component)
         self.assertEqual(component.orig_name, 'generic')
         self.assertEqual(component.copy_name, 'second')
-        self.assertEqual(component.vars, group)
-        self.assertEqual(component.cls,
-                         sourcery.selftests.components.generic.Component)
+        self.assertIs(component.vars, group)
+        self.assertIs(component.cls,
+                      sourcery.selftests.components.generic.Component)
 
 
 class AddReleaseConfigArgTestCase(unittest.TestCase):
@@ -747,7 +747,7 @@ class ReleaseConfigLoaderTestCase(unittest.TestCase):
         self.assertIsInstance(relcfg.generic.vc.get(), SvnVC)
         self.assertIsInstance(relcfg.build.get(), PkgHost)
         self.assertEqual(relcfg.build.get().name, 'x86_64-linux-gnu')
-        self.assertEqual(relcfg.build.get().context, self.context)
+        self.assertIs(relcfg.build.get().context, self.context)
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.generic.version.set("1.23")\n'
@@ -801,8 +801,8 @@ class ReleaseConfigTestCase(unittest.TestCase):
         relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
-        self.assertEqual(relcfg.args, self.args)
-        self.assertEqual(relcfg.context, self.context)
+        self.assertIs(relcfg.args, self.args)
+        self.assertIs(relcfg.context, self.context)
         # Verify build and hosts settings.
         self.assertIsInstance(relcfg.build.get(), PkgHost)
         self.assertEqual(relcfg.build.get().name, 'x86_64-linux-gnu')
@@ -988,8 +988,8 @@ class ReleaseConfigTestCase(unittest.TestCase):
         self.assertIsInstance(component, ComponentInConfig)
         self.assertEqual(component.orig_name, 'generic')
         self.assertEqual(component.copy_name, 'generic')
-        self.assertEqual(component.cls,
-                         sourcery.selftests.components.generic.Component)
+        self.assertIs(component.cls,
+                      sourcery.selftests.components.generic.Component)
         self.assertEqual(component.vars.version.get(), '1.23')
 
     def test_get_component_errors(self):
@@ -1104,13 +1104,13 @@ class ReleaseConfigTestCase(unittest.TestCase):
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         tree = relcfg.install_tree_fstree(relcfg.build.get(), 'example')
         self.assertIsInstance(tree, FSTreeCopy)
-        self.assertEqual(tree.context, self.context)
+        self.assertIs(tree.context, self.context)
         self.assertEqual(tree.path,
                          relcfg.install_tree_path(relcfg.build.get(),
                                                   'example'))
         self.assertEqual(tree.install_trees, {(relcfg.build.get(), 'example')})
         tree = relcfg.install_tree_fstree(relcfg.build.get().build_cfg, 'test')
-        self.assertEqual(tree.context, self.context)
+        self.assertIs(tree.context, self.context)
         self.assertEqual(tree.path,
                          relcfg.install_tree_path(relcfg.build.get().build_cfg,
                                                   'test'))

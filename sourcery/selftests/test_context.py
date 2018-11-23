@@ -163,33 +163,33 @@ class ContextTestCase(unittest.TestCase):
         self.assertEqual(self.context.environ_orig, os.environ)
         self.assertIsNot(self.context.environ_orig, os.environ)
         self.assertIs(self.context.flags, sys.flags)
-        self.assertEqual(self.context.execve, os.execve)
-        self.assertEqual(self.context.setlocale, locale.setlocale)
-        self.assertEqual(self.context.umask, os.umask)
+        self.assertIs(self.context.execve, os.execve)
+        self.assertIs(self.context.setlocale, locale.setlocale)
+        self.assertIs(self.context.umask, os.umask)
         self.assertIn('self-test', self.context.commands)
         import sourcery.commands.self_test
-        self.assertEqual(self.context.commands['self-test'],
-                         sourcery.commands.self_test.Command)
+        self.assertIs(self.context.commands['self-test'],
+                      sourcery.commands.self_test.Command)
         self.assertIn('gcc', self.context.components)
         import sourcery.components.gcc
-        self.assertEqual(self.context.components['gcc'],
-                         sourcery.components.gcc.Component)
+        self.assertIs(self.context.components['gcc'],
+                      sourcery.components.gcc.Component)
         # Test loading extra commands and components.
         test_context = ScriptContext(['sourcery.selftests'])
         self.assertIn('self-test', test_context.commands)
-        self.assertEqual(test_context.commands['self-test'],
-                         sourcery.commands.self_test.Command)
+        self.assertIs(test_context.commands['self-test'],
+                      sourcery.commands.self_test.Command)
         self.assertIn('null', test_context.commands)
         import sourcery.selftests.commands.null
-        self.assertEqual(test_context.commands['null'],
-                         sourcery.selftests.commands.null.Command)
+        self.assertIs(test_context.commands['null'],
+                      sourcery.selftests.commands.null.Command)
         self.assertIn('gcc', test_context.components)
-        self.assertEqual(test_context.components['gcc'],
-                         sourcery.components.gcc.Component)
+        self.assertIs(test_context.components['gcc'],
+                      sourcery.components.gcc.Component)
         self.assertIn('generic', test_context.components)
         import sourcery.selftests.components.generic
-        self.assertEqual(test_context.components['generic'],
-                         sourcery.selftests.components.generic.Component)
+        self.assertIs(test_context.components['generic'],
+                      sourcery.selftests.components.generic.Component)
         # Errors for duplicate commands and components are not tested
         # here, and are expected to be removed to allow for packages
         # with extra commands and components to provide extra Command

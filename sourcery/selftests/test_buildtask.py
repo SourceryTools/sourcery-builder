@@ -193,8 +193,8 @@ class BuildTaskTestCase(unittest.TestCase):
     def test_init(self):
         """Test BuildTask.__init__."""
         top_task = BuildTask(self.relcfg, None, '', True)
-        self.assertEqual(top_task.relcfg, self.relcfg)
-        self.assertEqual(top_task.context, self.context)
+        self.assertIs(top_task.relcfg, self.relcfg)
+        self.assertIs(top_task.context, self.context)
         sub_task = BuildTask(self.relcfg, top_task, 'b', True)
         sub2_task = BuildTask(self.relcfg, sub_task, 'c', False)
         BuildTask(self.relcfg, sub_task, 'd', False)

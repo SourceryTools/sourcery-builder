@@ -664,8 +664,8 @@ class ReleaseConfig:
 
     def list_source_components(self):
         """Return a list of the components in a release config with sources."""
-        return [c for c in self._components_full
-                if c.vars.source_type.get() != 'none']
+        return tuple(c for c in self._components_full
+                     if c.vars.source_type.get() != 'none')
 
     def get_component(self, component):
         """Get the ComponentInConfig object for a component."""

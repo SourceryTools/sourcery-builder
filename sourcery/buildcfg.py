@@ -60,7 +60,7 @@ class BuildCfg:
             context.error('triplet must be a string')
         self.triplet = triplet
         if tool_prefix is None:
-            self._tool_prefix = triplet + '-'
+            self._tool_prefix = self._default_tool_prefix()
         else:
             self._tool_prefix = tool_prefix
         # An easy mistake to make is specifying a string for ccopts or
@@ -74,8 +74,7 @@ class BuildCfg:
                               'a single string')
             self._ccopts = tuple(ccopts)
         if name is None:
-            name = triplet + ''.join(self._ccopts)
-            name = re.sub('[^0-9A-Za-z_-]', '_', name)
+            name = self._default_name()
         self.name = name
         if tool_opts is None:
             self._tool_opts = {}
@@ -85,6 +84,16 @@ class BuildCfg:
                     context.error('tool_opts values must be lists of '
                                   'strings, not single strings')
             self._tool_opts = dict(tool_opts)
+
+    def _default_tool_prefix(self):
+        """Return the default tool prefix for this triplet."""
+        return self.triplet + '-'
+
+    def _default_name(self):
+        """Return the default name for this triplet and compiler options."""
+        name = self.triplet + ''.join(self._ccopts)
+        name = re.sub('[^0-9A-Za-z_-]', '_', name)
+        return name
 
     def is_windows(self):
         """Return whether this triplet is for Windows OS."""

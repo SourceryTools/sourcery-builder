@@ -27,6 +27,7 @@ import unittest
 
 from sourcery.buildcfg import BuildCfg
 from sourcery.context import add_common_options, ScriptContext, ScriptError
+from sourcery.fstree import FSTreeCopy
 from sourcery.pkghost import PkgHost
 from sourcery.relcfg import ConfigVarType, ConfigVarTypeList, \
     ConfigVarTypeDict, ConfigVarTypeStrEnum, ConfigVar, ConfigVarGroup, \
@@ -874,3 +875,239 @@ class ReleaseConfigTestCase(unittest.TestCase):
                                'first host not the same as build system',
                                ReleaseConfig, self.context, relcfg_text,
                                loader, self.args)
+
+    def test_list_vars(self):
+        """Test ReleaseConfig.list_vars."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_vars(),
+                         ['bindir', 'bindir_rel', 'build', 'env_set', 'hosts',
+                          'info_dir_rel', 'installdir', 'installdir_rel',
+                          'interp', 'script_full', 'sysroot', 'sysroot_rel',
+                          'target'])
+
+    def test_add_component(self):
+        """Test ReleaseConfig.add_component."""
+        loader = ReleaseConfigTextLoader()
+        # Components may be added more than once.
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1")\n'
+                       'cfg.add_component("postcheckout")\n'
+                       'cfg.postcheckout.version.set("2")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_components(),
+                         (relcfg.get_component('generic'),
+                          relcfg.get_component('postcheckout')))
+
+    def test_add_component_errors(self):
+        """Test errors from ReleaseConfig.add_component."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.add_component("no_such_component")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        self.assertRaisesRegex(ScriptError,
+                               'unknown component no_such_component',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+
+    def test_list_components(self):
+        """Test ReleaseConfig.list_components."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_components(), ())
+        relcfg_text = ('cfg.add_component("postcheckout")\n'
+                       'cfg.postcheckout.version.set("2")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_components(),
+                         (relcfg.get_component('generic'),
+                          relcfg.get_component('postcheckout')))
+
+    def test_list_source_components(self):
+        """Test ReleaseConfig.list_source_components."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_source_components(), ())
+        relcfg_text = ('cfg.add_component("postcheckout")\n'
+                       'cfg.postcheckout.version.set("2")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_source_components(),
+                         (relcfg.get_component('generic'),
+                          relcfg.get_component('postcheckout')))
+        relcfg_text = ('cfg.add_component("postcheckout")\n'
+                       'cfg.postcheckout.version.set("2")\n'
+                       'cfg.postcheckout.source_type.set("closed")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_source_components(),
+                         (relcfg.get_component('generic'),
+                          relcfg.get_component('postcheckout')))
+        relcfg_text = ('cfg.add_component("postcheckout")\n'
+                       'cfg.postcheckout.version.set("2")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.source_type.set("none")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_source_components(),
+                         (relcfg.get_component('postcheckout'),))
+
+    def test_get_component(self):
+        """Test ReleaseConfig.get_component."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        component = relcfg.get_component('generic')
+        self.assertIsInstance(component, ComponentInConfig)
+        self.assertEqual(component.orig_name, 'generic')
+        self.assertEqual(component.copy_name, 'generic')
+        self.assertEqual(component.cls,
+                         sourcery.selftests.components.generic.Component)
+        self.assertEqual(component.vars.version.get(), '1.23')
+
+    def test_get_component_errors(self):
+        """Test errors from ReleaseConfig.get_component."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertRaisesRegex(KeyError,
+                               'postcheckout',
+                               relcfg.get_component, 'postcheckout')
+
+    def test_get_component_vars(self):
+        """Test ReleaseConfig.get_component_vars."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        vars_group = relcfg.get_component_vars('generic')
+        self.assertIsInstance(vars_group, ConfigVarGroup)
+        self.assertEqual(vars_group.version.get(), '1.23')
+
+    def test_get_component_vars_errors(self):
+        """Test errors from ReleaseConfig.get_component_vars."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertRaisesRegex(ScriptError,
+                               'component postcheckout not in config',
+                               relcfg.get_component_vars, 'postcheckout')
+
+    def test_get_component_var(self):
+        """Test ReleaseConfig.get_component_var."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.get_component_var('generic', 'version'),
+                         '1.23')
+
+    def test_get_component_var_errors(self):
+        """Test errors from ReleaseConfig.get_component_var."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertRaisesRegex(ScriptError,
+                               'component postcheckout not in config',
+                               relcfg.get_component_var, 'postcheckout',
+                               'version')
+        self.assertRaisesRegex(AttributeError,
+                               'no_such_variable',
+                               relcfg.get_component_var, 'generic',
+                               'no_such_variable')
+
+    def test_objdir_path(self):
+        """Test ReleaseConfig.objdir_path."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.objdir_path(None, 'example'),
+                         os.path.join(self.args.objdir, 'example'))
+        self.assertEqual(relcfg.objdir_path(relcfg.build.get(), 'other'),
+                         os.path.join(self.args.objdir,
+                                      'pkg-other-x86_64-linux-gnu'))
+        self.assertEqual(relcfg.objdir_path(relcfg.build.get().build_cfg,
+                                            'third'),
+                         os.path.join(self.args.objdir,
+                                      'third-x86_64-linux-gnu'))
+        build_cfg = BuildCfg('i686-pc-linux-gnu', 'some-other-name')
+        self.assertEqual(relcfg.objdir_path(build_cfg, 'next'),
+                         os.path.join(self.args.objdir,
+                                      'next-some-other-name'))
+
+    def test_install_tree_path(self):
+        """Test ReleaseConfig.install_tree_path."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.install_tree_path(relcfg.build.get(), 'other'),
+                         os.path.join(self.args.objdir,
+                                      'pkg-install-trees-x86_64-linux-gnu',
+                                      'other'))
+        self.assertEqual(relcfg.install_tree_path(relcfg.build.get().build_cfg,
+                                                  'second'),
+                         os.path.join(self.args.objdir,
+                                      'install-trees-x86_64-linux-gnu',
+                                      'second'))
+        build_cfg = BuildCfg('i686-pc-linux-gnu', 'some-other-name')
+        self.assertEqual(relcfg.install_tree_path(build_cfg, 'next'),
+                         os.path.join(self.args.objdir,
+                                      'install-trees-some-other-name', 'next'))
+
+    def test_install_tree_fstree(self):
+        """Test ReleaseConfig.install_tree_fstree."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        tree = relcfg.install_tree_fstree(relcfg.build.get(), 'example')
+        self.assertIsInstance(tree, FSTreeCopy)
+        self.assertEqual(tree.context, self.context)
+        self.assertEqual(tree.path,
+                         relcfg.install_tree_path(relcfg.build.get(),
+                                                  'example'))
+        self.assertEqual(tree.install_trees, {(relcfg.build.get(), 'example')})
+        tree = relcfg.install_tree_fstree(relcfg.build.get().build_cfg, 'test')
+        self.assertEqual(tree.context, self.context)
+        self.assertEqual(tree.path,
+                         relcfg.install_tree_path(relcfg.build.get().build_cfg,
+                                                  'test'))
+        self.assertEqual(tree.install_trees, {(relcfg.build.get().build_cfg,
+                                               'test')})

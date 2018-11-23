@@ -52,3 +52,17 @@ class PkgHost:
         if build_cfg is None:
             build_cfg = sourcery.buildcfg.BuildCfg(context, name)
         self.build_cfg = build_cfg
+
+    def __repr__(self):
+        """Return a textual representation of a PkgHost object.
+
+        The representation is in the form a PkgHost call might appear
+        in a release config, omitting the context argument.
+
+        """
+        build_cfg_repr = repr(self.build_cfg)
+        default_build_cfg_repr = 'BuildCfg(%s)' % repr(self.name)
+        if build_cfg_repr == default_build_cfg_repr:
+            return 'PkgHost(%s)' % repr(self.name)
+        else:
+            return 'PkgHost(%s, %s)' % (repr(self.name), build_cfg_repr)

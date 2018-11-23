@@ -48,3 +48,15 @@ class PkgHostTestCase(unittest.TestCase):
         self.assertIs(host.context, self.context)
         self.assertEqual(host.name, 'powerpc-linux-gnu-hard')
         self.assertIs(host.build_cfg, cfg)
+
+    def test_repr(self):
+        """Test PkgHost.__repr__."""
+        host = PkgHost(self.context, 'aarch64-linux-gnu')
+        self.assertEqual(repr(host), "PkgHost('aarch64-linux-gnu')")
+        cfg = BuildCfg(self.context, 'i686-pc-linux-gnu',
+                       tool_prefix='x86_64-linux-gnu-', ccopts=('-m32',))
+        host = PkgHost(self.context, 'i686-pc-linux-gnu', cfg)
+        self.assertEqual(repr(host),
+                         "PkgHost('i686-pc-linux-gnu', "
+                         "BuildCfg('i686-pc-linux-gnu', "
+                         "tool_prefix='x86_64-linux-gnu-', ccopts=('-m32',)))")

@@ -106,7 +106,8 @@ class BuildCfgTestCase(unittest.TestCase):
     def test_tool_mod(self):
         """Test modification of BuildCfg arguments and tool results."""
         ccopts = ['-m64']
-        tool_opts = {'as': ['--64']}
+        as_opts = ['--64']
+        tool_opts = {'as': as_opts}
         cfg = BuildCfg(self.context, 'x86_64-linux-gnu',
                        tool_prefix='i686-pc-linux-gnu-', ccopts=ccopts,
                        tool_opts=tool_opts)
@@ -114,6 +115,9 @@ class BuildCfgTestCase(unittest.TestCase):
         # Modifying the original tool_opts must not change the results
         # of the tool method.
         tool_opts['as'] = ['--32']
+        self.assertEqual(cfg.tool('as'), ['i686-pc-linux-gnu-as', '--64'])
+        # Likewise for elements of tool_opts.
+        as_opts.append('--other')
         self.assertEqual(cfg.tool('as'), ['i686-pc-linux-gnu-as', '--64'])
         # Likewise, for ccopts.
         ccopts.append('-mavx')

@@ -83,7 +83,8 @@ class BuildCfg:
                 if isinstance(val, str):
                     context.error('tool_opts values must be lists of '
                                   'strings, not single strings')
-            self._tool_opts = dict(tool_opts)
+            self._tool_opts = {key: tuple(value)
+                               for key, value in tool_opts.items()}
 
     def _default_tool_prefix(self):
         """Return the default tool prefix for this triplet."""

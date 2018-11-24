@@ -598,7 +598,7 @@ class ConfigVarGroupTestCase(unittest.TestCase):
                           'vc', 'version'])
         # Test each component variable's default value and type
         # constraints.
-        self.assertEqual(group.no_add_rel_cfg_vars.configure_opts.get(), [])
+        self.assertEqual(group.no_add_rel_cfg_vars.configure_opts.get(), ())
         self.assertRaisesRegex(ScriptError,
                                r'bad type for value of release config '
                                r'variable no_add_rel_cfg_vars\.configure_opts',

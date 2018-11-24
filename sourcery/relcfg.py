@@ -401,7 +401,7 @@ class ConfigVarGroup:
             group = self.add_group(component, None)
             group.add_var('configure_opts',
                           ConfigVarTypeList(ConfigVarType(self.context, str)),
-                          [],
+                          (),
                           """Options to pass to 'configure' for this component.
 
                           If this component does not use a configure-based

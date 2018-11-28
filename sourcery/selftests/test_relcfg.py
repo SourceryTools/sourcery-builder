@@ -535,6 +535,7 @@ class ConfigVarGroupTestCase(unittest.TestCase):
         # Test the list of release config variables.
         self.assertEqual(group.list_vars(),
                          ['build', 'env_set', 'hosts', 'installdir', 'interp',
+                          'pkg_build', 'pkg_prefix', 'pkg_version',
                           'script_full', 'target'])
         # Test each variable's default value and type constraints.
         self.assertIsNone(group.build.get())
@@ -577,6 +578,24 @@ class ConfigVarGroupTestCase(unittest.TestCase):
                                'interp',
                                group.interp.set, None)
         group.interp.set('/path/to/python3')
+        self.assertEqual(group.pkg_build.get(), 1)
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'pkg_build',
+                               group.pkg_build.set, '1')
+        group.pkg_build.set(2)
+        self.assertEqual(group.pkg_prefix.get(), 'toolchain')
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'pkg_prefix',
+                               group.pkg_prefix.set, 1)
+        group.pkg_prefix.set('gcc')
+        self.assertEqual(group.pkg_version.get(), '1.0')
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'pkg_version',
+                               group.pkg_version.set, 1)
+        group.pkg_version.set('1234')
         self.assertEqual(group.script_full.get(), self.context.script_full)
         self.assertRaisesRegex(ScriptError,
                                'bad type for value of release config variable '
@@ -847,6 +866,12 @@ class ReleaseConfigTestCase(unittest.TestCase):
                          'opt/toolchain/aarch64-linux-gnu/libc')
         self.assertEqual(relcfg.info_dir_rel.get(),
                          'opt/toolchain/share/info/dir')
+        self.assertEqual(relcfg.version.get(), '1.0-1')
+        self.assertEqual(relcfg.pkg_name_no_target.get(), 'toolchain-1.0-1')
+        self.assertEqual(relcfg.pkg_name_full.get(),
+                         'toolchain-1.0-1-aarch64-linux-gnu')
+        self.assertEqual(relcfg.pkg_name_no_version.get(),
+                         'toolchain-aarch64-linux-gnu')
         # Test per-component internal variables set by __init__.
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1.23")\n'
@@ -890,8 +915,10 @@ class ReleaseConfigTestCase(unittest.TestCase):
         self.assertEqual(relcfg.list_vars(),
                          ['bindir', 'bindir_rel', 'build', 'env_set', 'hosts',
                           'info_dir_rel', 'installdir', 'installdir_rel',
-                          'interp', 'script_full', 'sysroot', 'sysroot_rel',
-                          'target'])
+                          'interp', 'pkg_build', 'pkg_name_full',
+                          'pkg_name_no_target', 'pkg_name_no_version',
+                          'pkg_prefix', 'pkg_version', 'script_full',
+                          'sysroot', 'sysroot_rel', 'target', 'version'])
 
     def test_add_component(self):
         """Test ReleaseConfig.add_component."""

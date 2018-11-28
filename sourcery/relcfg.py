@@ -361,6 +361,36 @@ class ConfigVarGroup:
                      prefix used on the host.  Also, as installed tools are
                      generally relocatable, this is just a build-time default
                      prefix, and users may install in a different prefix.""")
+        self.add_var('pkg_prefix', ConfigVarType(self.context, str),
+                     'toolchain',
+                     """The prefix for packages and related files and
+                     directories.
+
+                     Together with a version number, and target and host
+                     triplets where appropriate, this is used to name release
+                     packages, the directories into which those unpack, and
+                     some files and directories used in the build.""")
+        self.add_var('pkg_version', ConfigVarType(self.context, str),
+                     '1.0',
+                     """The version number for a release series.
+
+                     This version number is used, together with pkg_prefix, for
+                     a group of related releases from a release config
+                     (typically using the same upstream versions of toolchain
+                     components).  It may be based on a date, or the version of
+                     a major component such as GCC, for example.  Successive
+                     releases in such a group are distinguished by the value
+                     of pkg_build.""")
+        self.add_var('pkg_build', ConfigVarType(self.context, int),
+                     1,
+                     """The build number of a single release.
+
+                     This number is used to distinguish between successive
+                     releases with the same values of pkg_prefix and
+                     pkg_version.  Releases with different versions of the
+                     sources of any component must use different values of
+                     pkg_build (releases with the same sources but for
+                     different targets may use the same value).""")
         self.add_var('script_full', ConfigVarType(self.context, str),
                      self.context.script_full,
                      """The expected full path to the script running the build.
@@ -636,6 +666,40 @@ class ReleaseConfig:
                          that removes the info directory to avoid conflicts
                          between copies installed by different toolchain
                          components.""",
+                         internal=True)
+        self._vg.add_var('version', ConfigVarType(self.context, str),
+                         '%s-%d' % (self.pkg_version.get(),
+                                    self.pkg_build.get()),
+                         """The version number of this release.""",
+                         internal=True)
+        self._vg.add_var('pkg_name_no_target',
+                         ConfigVarType(self.context, str),
+                         '%s-%s' % (self.pkg_prefix.get(),
+                                    self.version.get()),
+                         """The prefix and version number of this release.
+
+                         This is used in the name of the directory into which
+                         release packages unpack.""",
+                         internal=True)
+        self._vg.add_var('pkg_name_full',
+                         ConfigVarType(self.context, str),
+                         '%s-%s' % (self.pkg_name_no_target.get(),
+                                    self.target.get()),
+                         """The prefix, version number and target triplet of
+                         this release.
+
+                         This is the form of package name typically used in
+                         release package names and the names of files and
+                         directories used during the build.""",
+                         internal=True)
+        self._vg.add_var('pkg_name_no_version',
+                         ConfigVarType(self.context, str),
+                         '%s-%s' % (self.pkg_prefix.get(), self.target.get()),
+                         """The prefix and target of this release.
+
+                         This is used in the names of installed files where
+                         those names should not change when the version number
+                         changes.""",
                          internal=True)
         self._components_full = []
         self._components_full_byname = {}

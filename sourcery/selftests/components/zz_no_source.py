@@ -1,4 +1,4 @@
-# Initialize sourcery.commands package.
+# sourcery-builder zz_no_source component for testing.
 
 # Copyright 2018 Mentor Graphics Corporation.
 
@@ -16,6 +16,21 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder commands package."""
+"""sourcery-builder zz_no_source component for testing.
 
-__all__ = ['checkout', 'devel', 'info', 'rpc_client', 'self_test']
+The component name is deliberately chosen so that it comes last
+alphabetically for 'sourcery-builder info' testing.
+
+"""
+
+import sourcery.component
+
+__all__ = ['Component']
+
+
+class Component(sourcery.component.Component):
+    """zz_no_source component implementation."""
+
+    @staticmethod
+    def add_release_config_vars(group):
+        group.source_type.set_implicit('none')

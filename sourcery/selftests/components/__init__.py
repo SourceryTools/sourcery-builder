@@ -22,4 +22,4 @@ __all__ = ['add_rel_cfg_vars', 'build_fail_cd', 'build_fail_command',
            'build_fail_python', 'build_install_tree', 'build_log',
            'build_test', 'configure_opts', 'files_to_touch',
            'files_to_touch_glob', 'generic', 'no_add_rel_cfg_vars',
-           'postcheckout']
+           'postcheckout', 'zz_no_source']

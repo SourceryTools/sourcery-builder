@@ -108,7 +108,9 @@ class BuildContextTestCase(unittest.TestCase):
         bcontext = self.build_context
         self.assertIs(bcontext.context, self.context)
         self.assertIs(bcontext.relcfg, self.relcfg)
-        self.assertEqual(bcontext.logdir, self.args.logdir)
+        self.assertEqual(bcontext.logdir,
+                         os.path.join(self.args.logdir,
+                                      'toolchain-1.0-1-aarch64-linux-gnu'))
         self.assertEqual(bcontext.parallelism, self.args.parallelism)
         self.assertEqual(bcontext.build_objdir,
                          self.relcfg.objdir_path(None, 'build'))

@@ -38,7 +38,7 @@ class BuildContext:
         """Initialize a BuildContext for a configuration."""
         self.context = context
         self.relcfg = relcfg
-        self.logdir = args.logdir
+        self.logdir = os.path.join(args.logdir, relcfg.pkg_name_full.get())
         self.parallelism = args.parallelism
         self.build_objdir = relcfg.objdir_path(None, 'build')
         self._tempdir_td = tempfile.TemporaryDirectory()

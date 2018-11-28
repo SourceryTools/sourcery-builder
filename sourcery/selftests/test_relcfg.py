@@ -1090,17 +1090,22 @@ class ReleaseConfigTestCase(unittest.TestCase):
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         self.assertEqual(relcfg.objdir_path(None, 'example'),
-                         os.path.join(self.args.objdir, 'example'))
+                         os.path.join(self.args.objdir,
+                                      'toolchain-1.0-1-aarch64-linux-gnu',
+                                      'example'))
         self.assertEqual(relcfg.objdir_path(relcfg.build.get(), 'other'),
                          os.path.join(self.args.objdir,
+                                      'toolchain-1.0-1-aarch64-linux-gnu',
                                       'pkg-other-x86_64-linux-gnu'))
         self.assertEqual(relcfg.objdir_path(relcfg.build.get().build_cfg,
                                             'third'),
                          os.path.join(self.args.objdir,
+                                      'toolchain-1.0-1-aarch64-linux-gnu',
                                       'third-x86_64-linux-gnu'))
         build_cfg = BuildCfg('i686-pc-linux-gnu', 'some-other-name')
         self.assertEqual(relcfg.objdir_path(build_cfg, 'next'),
                          os.path.join(self.args.objdir,
+                                      'toolchain-1.0-1-aarch64-linux-gnu',
                                       'next-some-other-name'))
 
     def test_install_tree_path(self):
@@ -1111,16 +1116,19 @@ class ReleaseConfigTestCase(unittest.TestCase):
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         self.assertEqual(relcfg.install_tree_path(relcfg.build.get(), 'other'),
                          os.path.join(self.args.objdir,
+                                      'toolchain-1.0-1-aarch64-linux-gnu',
                                       'pkg-install-trees-x86_64-linux-gnu',
                                       'other'))
         self.assertEqual(relcfg.install_tree_path(relcfg.build.get().build_cfg,
                                                   'second'),
                          os.path.join(self.args.objdir,
+                                      'toolchain-1.0-1-aarch64-linux-gnu',
                                       'install-trees-x86_64-linux-gnu',
                                       'second'))
         build_cfg = BuildCfg('i686-pc-linux-gnu', 'some-other-name')
         self.assertEqual(relcfg.install_tree_path(build_cfg, 'next'),
                          os.path.join(self.args.objdir,
+                                      'toolchain-1.0-1-aarch64-linux-gnu',
                                       'install-trees-some-other-name', 'next'))
 
     def test_install_tree_fstree(self):

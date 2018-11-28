@@ -765,13 +765,14 @@ class ReleaseConfig:
         """Return the name to use for an object directory.
 
         The host argument may be a PkgHost or a BuildCfg."""
+        objdir = os.path.join(self.args.objdir, self.pkg_name_full.get())
         if host is None:
-            return os.path.join(self.args.objdir, name)
+            return os.path.join(objdir, name)
         elif isinstance(host, PkgHost):
-            return os.path.join(self.args.objdir,
+            return os.path.join(objdir,
                                 'pkg-%s-%s' % (name, host.name))
         else:
-            return os.path.join(self.args.objdir, '%s-%s' % (name, host.name))
+            return os.path.join(objdir, '%s-%s' % (name, host.name))
 
     def install_tree_path(self, host, name):
         """Return the name to use for an install tree.

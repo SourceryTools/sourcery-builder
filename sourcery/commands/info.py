@@ -19,8 +19,8 @@
 """sourcery-builder info command."""
 
 import sourcery.command
-import sourcery.info
-import sourcery.relcfg
+from sourcery.info import info_text
+from sourcery.relcfg import add_release_config_arg
 
 __all__ = ['Command']
 
@@ -39,9 +39,8 @@ class Command(sourcery.command.Command):
     def add_arguments(parser):
         parser.add_argument('--internal-vars', action='store_true',
                             help='Show values of internal variables')
-        sourcery.relcfg.add_release_config_arg(parser)
+        add_release_config_arg(parser)
 
     @staticmethod
     def main(context, relcfg, args):
-        print(sourcery.info.info_text(relcfg, args.verbose,
-                                      args.internal_vars))
+        print(info_text(relcfg, args.verbose, args.internal_vars))

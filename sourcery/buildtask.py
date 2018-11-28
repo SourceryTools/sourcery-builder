@@ -22,8 +22,8 @@ import os.path
 import shlex
 
 from sourcery.fstree import FSTreeEmpty, FSTreeUnion
-from sourcery.makefile import command_to_make
-import sourcery.tsort
+from sourcery.makefile import command_to_make, Makefile
+from sourcery.tsort import tsort
 
 __all__ = ['BuildStep', 'BuildCommand', 'BuildMake', 'BuildPython',
            'BuildTask']
@@ -624,8 +624,7 @@ class BuildTask:
         self._create_implicit_install_tasks()
         self._top_deps = {}
         self.record_deps(self._top_deps)
-        self._top_deps_list = sourcery.tsort.tsort(self.context,
-                                                   self._top_deps)
+        self._top_deps_list = tsort(self.context, self._top_deps)
         task_number = 1
         for target in self._top_deps_list:
             if target.startswith(_TASK_END_STR):
@@ -651,7 +650,7 @@ class BuildTask:
             self.context.error('makefile_text called for non-top-level '
                                'task %s' % self._fullname)
         self.finalize()
-        makefile = sourcery.makefile.Makefile(self.context, 'all')
+        makefile = Makefile(self.context, 'all')
         for target in self._top_deps_list:
             makefile.add_target(target)
         makefile.add_deps('all', [self.end_name()])

@@ -20,7 +20,7 @@
 
 import os.path
 
-import sourcery.buildtask
+from sourcery.buildtask import BuildTask
 
 
 __all__ = ['add_host_cfg_build_tasks', 'add_host_lib_cfg_build_tasks',
@@ -66,12 +66,12 @@ def add_host_cfg_build_tasks(relcfg, host, component, parent, name, srcdir,
     else:
         cfg_prefix = prefix
         destdir = instdir
-    task_group = sourcery.buildtask.BuildTask(relcfg, parent, name)
+    task_group = BuildTask(relcfg, parent, name)
     task_group.provide_install(host, name)
-    init_task = sourcery.buildtask.BuildTask(relcfg, task_group, 'init')
+    init_task = BuildTask(relcfg, task_group, 'init')
     init_task.add_empty_dir(objdir)
     init_task.add_empty_dir(instdir)
-    cfg_task = sourcery.buildtask.BuildTask(relcfg, task_group, 'configure')
+    cfg_task = BuildTask(relcfg, task_group, 'configure')
     cfg_cmd = [os.path.join(srcdir, 'configure'),
                '--build=%s' % build.triplet,
                '--host=%s' % host.triplet,
@@ -87,13 +87,13 @@ def add_host_cfg_build_tasks(relcfg, host, component, parent, name, srcdir,
                     'CXX_FOR_BUILD=%s'
                     % ' '.join(build.tool('c++-compiler'))])
     cfg_task.add_command(cfg_cmd, cwd=objdir)
-    build_task = sourcery.buildtask.BuildTask(relcfg, task_group, 'build')
+    build_task = BuildTask(relcfg, task_group, 'build')
     if parallel:
         build_cmd = []
     else:
         build_cmd = ['-j1']
     build_task.add_make(build_cmd, objdir)
-    install_task = sourcery.buildtask.BuildTask(relcfg, task_group, 'install')
+    install_task = BuildTask(relcfg, task_group, 'install')
     install_cmd = ['-j1', 'install']
     if destdir is not None:
         install_cmd.append('DESTDIR=%s' % destdir)

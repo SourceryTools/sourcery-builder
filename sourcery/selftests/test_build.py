@@ -32,7 +32,7 @@ from sourcery.build import BuildContext
 from sourcery.context import add_common_options, add_parallelism_option, \
     ScriptContext, ScriptError
 from sourcery.relcfg import ReleaseConfig, ReleaseConfigTextLoader
-import sourcery.rpc
+from sourcery.rpc import RPCServer
 from sourcery.selftests.support import read_files, redirect_file, \
     parse_makefile
 
@@ -114,7 +114,7 @@ class BuildContextTestCase(unittest.TestCase):
                          self.relcfg.objdir_path(None, 'build'))
         self.assertTrue(stat.S_ISDIR(os.stat(bcontext.sockdir,
                                              follow_symlinks=False).st_mode))
-        self.assertIsInstance(bcontext.server, sourcery.rpc.RPCServer)
+        self.assertIsInstance(bcontext.server, RPCServer)
 
     def test_setup_build_dir(self):
         """Test setup_build_dir."""

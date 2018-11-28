@@ -20,7 +20,7 @@
 
 import unittest
 
-import sourcery.context
+from sourcery.context import ScriptError, ScriptContext
 from sourcery.tsort import tsort
 
 __all__ = ['TsortTestCase']
@@ -32,7 +32,7 @@ class TsortTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up a tsort test."""
-        self.context = sourcery.context.ScriptContext()
+        self.context = ScriptContext()
 
     def test_tsort_basic(self):
         """Test basic use of the tsort function."""
@@ -52,14 +52,14 @@ class TsortTestCase(unittest.TestCase):
         deps = {'a': ['b']}
         self.assertRaises(KeyError, tsort, self.context, deps)
         deps = {'a': ['a']}
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'circular dependency',
                                tsort, self.context, deps)
         deps = {'a': ['b'], 'b': ['a']}
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'circular dependency',
                                tsort, self.context, deps)
         deps = {'a': ['b'], 'b': ['c'], 'c': ['d'], 'd': ['a']}
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'circular dependency',
                                tsort, self.context, deps)

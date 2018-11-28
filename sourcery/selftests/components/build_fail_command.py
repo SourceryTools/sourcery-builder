@@ -18,7 +18,7 @@
 
 """sourcery-builder build_fail_command component for testing."""
 
-import sourcery.buildtask
+from sourcery.buildtask import BuildTask
 import sourcery.component
 
 __all__ = ['Component']
@@ -33,5 +33,5 @@ class Component(sourcery.component.Component):
 
     @staticmethod
     def add_build_tasks_for_first_host(cfg, host, component, host_group):
-        task = sourcery.buildtask.BuildTask(cfg, host_group, 'first-host')
+        task = BuildTask(cfg, host_group, 'first-host')
         task.add_command(['sh', '-c', 'echo 1; echo 2; echo 3; echo 4; false'])

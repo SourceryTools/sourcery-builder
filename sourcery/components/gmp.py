@@ -18,7 +18,7 @@
 
 """sourcery-builder gmp component."""
 
-import sourcery.autoconf
+from sourcery.autoconf import add_host_lib_cfg_build_tasks
 import sourcery.component
 
 __all__ = ['Component']
@@ -36,8 +36,7 @@ class Component(sourcery.component.Component):
     @staticmethod
     def add_build_tasks_for_host(cfg, host, component, host_group):
         host_b = host.build_cfg
-        sourcery.autoconf.add_host_lib_cfg_build_tasks(
-            cfg, host_b, component, host_group)
+        add_host_lib_cfg_build_tasks(cfg, host_b, component, host_group)
 
     @staticmethod
     def configure_opts(cfg, host):

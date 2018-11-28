@@ -28,7 +28,7 @@ import tempfile
 import time
 import unittest
 
-import sourcery.context
+from sourcery.context import add_common_options, ScriptContext
 from sourcery.relcfg import ReleaseConfig, ReleaseConfigTextLoader
 from sourcery.vc import GitVC, SvnVC, TarVC
 
@@ -41,7 +41,7 @@ class VCTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up a version control test."""
-        self.context = sourcery.context.ScriptContext()
+        self.context = ScriptContext()
         self.context.silent = True
         self.tempdir_td = tempfile.TemporaryDirectory()
         self.tempdir = self.tempdir_td.name
@@ -280,7 +280,7 @@ class VCRelCfgTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up a version control test."""
-        self.context = sourcery.context.ScriptContext(['sourcery.selftests'])
+        self.context = ScriptContext(['sourcery.selftests'])
         self.context.silent = True
         self.tempdir_td = tempfile.TemporaryDirectory()
         self.tempdir = self.tempdir_td.name
@@ -288,7 +288,7 @@ class VCRelCfgTestCase(unittest.TestCase):
         self.codir = os.path.join(self.tempdir, 'co')
         self.srcdir = os.path.join(self.tempdir, 'src')
         parser = argparse.ArgumentParser()
-        sourcery.context.add_common_options(parser, self.tempdir)
+        add_common_options(parser, self.tempdir)
         self.args = parser.parse_args([])
 
     def tearDown(self):

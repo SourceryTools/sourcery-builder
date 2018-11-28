@@ -25,7 +25,9 @@ import os.path
 import sourcery.buildcfg
 from sourcery.fstree import FSTreeCopy
 import sourcery.pkghost
+from sourcery.pkghost import PkgHost
 import sourcery.vc
+from sourcery.vc import VC
 
 __all__ = ['ConfigVarType', 'ConfigVarTypeList', 'ConfigVarTypeDict',
            'ConfigVarTypeStrEnum', 'ConfigVar', 'ConfigVarGroup',
@@ -318,8 +320,7 @@ class ConfigVarGroup:
 
         """
         self.add_var('build',
-                     ConfigVarType(self.context, sourcery.pkghost.PkgHost,
-                                   str),
+                     ConfigVarType(self.context, PkgHost, str),
                      None,
                      """A PkgHost object for the system on which this config
                      is to be built.
@@ -328,8 +329,8 @@ class ConfigVarGroup:
                      converted automatically into a PkgHost.""")
         self.add_var('hosts',
                      ConfigVarTypeList(
-                         ConfigVarType(self.context, sourcery.pkghost.PkgHost,
-                                       str)), None,
+                         ConfigVarType(self.context, PkgHost, str)),
+                     None,
                      """A list of PkgHost objects for the hosts for which this
                      config builds tools.
 
@@ -406,7 +407,7 @@ class ConfigVarGroup:
 
                           If this component does not use a configure-based
                           build, this variable is ignored.""")
-            group.add_var('vc', ConfigVarType(self.context, sourcery.vc.VC),
+            group.add_var('vc', ConfigVarType(self.context, VC),
                           None,
                           """The version control location (a VC object) from
                           which sources for this component are checked out.
@@ -583,18 +584,17 @@ class ReleaseConfig:
         self._components = set()
         loader.load_config(self, release_config)
         build_orig = self.build.get()
-        if not isinstance(build_orig, sourcery.pkghost.PkgHost):
-            self.build.set_implicit(sourcery.pkghost.PkgHost(context,
-                                                             build_orig))
+        if not isinstance(build_orig, PkgHost):
+            self.build.set_implicit(PkgHost(context, build_orig))
         if not self.hosts.get_explicit():
             self.hosts.set_implicit((self.build.get(),))
         hlist_new = []
         for host in self.hosts.get():
-            if not isinstance(host, sourcery.pkghost.PkgHost):
+            if not isinstance(host, PkgHost):
                 if host == build_orig:
                     host = self.build.get()
                 else:
-                    host = sourcery.pkghost.PkgHost(context, host)
+                    host = PkgHost(context, host)
             hlist_new.append(host)
         if hlist_new[0] != self.build.get():
             self.context.error('first host not the same as build system')
@@ -703,7 +703,7 @@ class ReleaseConfig:
         The host argument may be a PkgHost or a BuildCfg."""
         if host is None:
             return os.path.join(self.args.objdir, name)
-        elif isinstance(host, sourcery.pkghost.PkgHost):
+        elif isinstance(host, PkgHost):
             return os.path.join(self.args.objdir,
                                 'pkg-%s-%s' % (name, host.name))
         else:

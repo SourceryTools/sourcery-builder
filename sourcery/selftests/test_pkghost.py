@@ -21,7 +21,7 @@
 import unittest
 
 from sourcery.buildcfg import BuildCfg
-import sourcery.context
+from sourcery.context import ScriptContext
 from sourcery.pkghost import PkgHost
 
 __all__ = ['PkgHostTestCase']
@@ -33,7 +33,7 @@ class PkgHostTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up a PkgHost test."""
-        self.context = sourcery.context.ScriptContext()
+        self.context = ScriptContext()
 
     def test_init(self):
         """Test __init__."""

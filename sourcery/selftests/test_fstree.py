@@ -25,7 +25,7 @@ import stat
 import tempfile
 import unittest
 
-import sourcery.context
+from sourcery.context import ScriptError, ScriptContext
 from sourcery.fstree import MapFSTreeCopy, MapFSTreeMap, FSTreeCopy, \
     FSTreeEmpty, FSTreeMove, FSTreeRemove, FSTreeUnion
 from sourcery.selftests.support import create_files, read_files
@@ -39,7 +39,7 @@ class MapFSTreeTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up a MapFSTree test."""
-        self.context = sourcery.context.ScriptContext()
+        self.context = ScriptContext()
         self.tempdir_td = tempfile.TemporaryDirectory()
         self.tempdir = self.tempdir_td.name
         self.indir = os.path.join(self.tempdir, 'in')
@@ -74,7 +74,7 @@ class MapFSTreeTestCase(unittest.TestCase):
         self.assertRaises(OSError, MapFSTreeCopy, self.context, self.indir)
         os.mkdir(self.indir)
         os.mkfifo(os.path.join(self.indir, 'fifo'))
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'bad file type for',
                                MapFSTreeCopy, self.context,
                                os.path.join(self.indir, 'fifo'))
@@ -93,16 +93,16 @@ class MapFSTreeTestCase(unittest.TestCase):
     def test_init_map_errors(self):
         """Test errors from initialization of MapFSTreeMap."""
         empty = MapFSTreeMap(self.context, {})
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'bad file name in map',
                                MapFSTreeMap, self.context, {'': empty})
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'bad file name in map',
                                MapFSTreeMap, self.context, {'.': empty})
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'bad file name in map',
                                MapFSTreeMap, self.context, {'..': empty})
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'bad file name in map',
                                MapFSTreeMap, self.context, {'a/b': empty})
 
@@ -176,22 +176,22 @@ class MapFSTreeTestCase(unittest.TestCase):
         """Test errors exporting MapFSTree objects."""
         tree = MapFSTreeMap(self.context, {})
         os.mkdir(self.outdir)
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'already exists',
                                tree.export, self.outdir)
         os.rmdir(self.outdir)
         os.symlink(self.indir, self.outdir)
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'already exists',
                                tree.export, self.outdir)
         os.mkdir(self.indir)
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'already exists',
                                tree.export, self.outdir)
         os.remove(self.outdir)
         with open(self.outdir, 'w', encoding='utf-8') as file:
             file.write('test')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'already exists',
                                tree.export, self.outdir)
 
@@ -250,28 +250,28 @@ class MapFSTreeTestCase(unittest.TestCase):
         tree_a = MapFSTreeCopy(self.context, os.path.join(self.indir, 'a'))
         tree_b = MapFSTreeCopy(self.context, os.path.join(self.indir, 'b'))
         tree_c = MapFSTreeCopy(self.context, os.path.join(self.indir, 'c'))
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'non-directory involved in union operation: x',
                                tree_a.union, tree_b, '')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'non-directory involved in union operation: x',
                                tree_a.union, tree_c, '')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'non-directory involved in union operation: x',
                                tree_b.union, tree_a, '')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'non-directory involved in union operation: x',
                                tree_b.union, tree_b, '')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'non-directory involved in union operation: x',
                                tree_b.union, tree_c, '')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'non-directory involved in union operation: x',
                                tree_c.union, tree_a, '')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'non-directory involved in union operation: x',
                                tree_c.union, tree_b, '')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'non-directory involved in union operation: x',
                                tree_c.union, tree_c, '')
 
@@ -348,22 +348,22 @@ class MapFSTreeTestCase(unittest.TestCase):
     def test_remove_errors(self):
         """Test errors removing paths from MapFSTree objects."""
         tree = MapFSTreeMap(self.context, {})
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                r'invalid path to remove: \.',
                                tree.remove, ['.'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                r'invalid path to remove: \.\.',
                                tree.remove, ['..'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid path to remove: foo//bar',
                                tree.remove, ['foo//bar'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid path to remove: /foo',
                                tree.remove, ['/foo'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid path to remove: bar/',
                                tree.remove, ['bar/'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid path to remove: ',
                                tree.remove, [''])
 
@@ -374,7 +374,7 @@ class FSTreeTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up an FSTree test."""
-        self.context = sourcery.context.ScriptContext()
+        self.context = ScriptContext()
         self.tempdir_td = tempfile.TemporaryDirectory()
         self.tempdir = self.tempdir_td.name
         self.indir = os.path.join(self.tempdir, 'in')
@@ -441,22 +441,22 @@ class FSTreeTestCase(unittest.TestCase):
     def test_move_errors(self):
         """Test errors from FSTreeMove."""
         ctree = FSTreeCopy(self.context, self.indir, {'foo/bar'})
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                r'invalid subdirectory: \.',
                                FSTreeMove, ctree, '.')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                r'invalid subdirectory: \.\.',
                                FSTreeMove, ctree, '..')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid subdirectory: foo//bar',
                                FSTreeMove, ctree, 'foo//bar')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid subdirectory: /foo',
                                FSTreeMove, ctree, '/foo')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid subdirectory: bar/',
                                FSTreeMove, ctree, 'bar/')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid subdirectory: ',
                                FSTreeMove, ctree, '')
 
@@ -487,22 +487,22 @@ class FSTreeTestCase(unittest.TestCase):
     def test_remove_errors(self):
         """Test errors from FSTreeRemove."""
         ctree = FSTreeCopy(self.context, self.indir, {'foo/bar'})
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                r'invalid path to remove: \.',
                                FSTreeRemove, ctree, ['.'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                r'invalid path to remove: \.\.',
                                FSTreeRemove, ctree, ['..'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid path to remove: foo//bar',
                                FSTreeRemove, ctree, ['foo//bar'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid path to remove: /foo',
                                FSTreeRemove, ctree, ['/foo'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid path to remove: bar/',
                                FSTreeRemove, ctree, ['bar/'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'invalid path to remove: ',
                                FSTreeRemove, ctree, [''])
 

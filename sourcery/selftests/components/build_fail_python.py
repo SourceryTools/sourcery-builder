@@ -18,7 +18,7 @@
 
 """sourcery-builder build_fail_python component for testing."""
 
-import sourcery.buildtask
+from sourcery.buildtask import BuildTask
 import sourcery.component
 
 __all__ = ['Component']
@@ -33,7 +33,7 @@ class Component(sourcery.component.Component):
 
     @staticmethod
     def add_build_tasks_for_first_host(cfg, host, component, host_group):
-        task = sourcery.buildtask.BuildTask(cfg, host_group, 'first-host')
+        task = BuildTask(cfg, host_group, 'first-host')
 
         def py_test_fn():
             """Test Python build step failure."""

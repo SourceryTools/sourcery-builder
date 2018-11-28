@@ -28,7 +28,7 @@ import shlex
 import subprocess
 import sys
 
-import sourcery.relcfg
+from sourcery.relcfg import ReleaseConfig
 
 __all__ = ['add_common_options', 'add_parallelism_option', 'ScriptError',
            'ScriptContext']
@@ -332,8 +332,7 @@ class ScriptContext:
         self._set_script(args.cmd_name)
         self.inform_start(argv)
         if 'release_config' in vars(args):
-            relcfg = sourcery.relcfg.ReleaseConfig(self, args.release_config,
-                                                   loader, args)
+            relcfg = ReleaseConfig(self, args.release_config, loader, args)
             extra_vars = relcfg.env_set.get()
             self.script_full = relcfg.script_full.get()
             self.interp = relcfg.interp.get()

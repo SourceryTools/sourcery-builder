@@ -18,7 +18,7 @@
 
 """Support package hosts."""
 
-import sourcery.buildcfg
+from sourcery.buildcfg import BuildCfg
 
 __all__ = ['PkgHost']
 
@@ -50,7 +50,7 @@ class PkgHost:
         self.context = context
         self.name = name
         if build_cfg is None:
-            build_cfg = sourcery.buildcfg.BuildCfg(context, name)
+            build_cfg = BuildCfg(context, name)
         self.build_cfg = build_cfg
 
     def __repr__(self):

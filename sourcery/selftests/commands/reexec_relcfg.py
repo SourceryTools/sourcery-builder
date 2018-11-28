@@ -19,7 +19,7 @@
 """sourcery-builder reexec-relcfg command for testing."""
 
 import sourcery.command
-import sourcery.relcfg
+from sourcery.relcfg import add_release_config_arg
 
 __all__ = ['Command']
 
@@ -33,7 +33,7 @@ class Command(sourcery.command.Command):
 
     @staticmethod
     def add_arguments(parser):
-        sourcery.relcfg.add_release_config_arg(parser)
+        add_release_config_arg(parser)
 
     @staticmethod
     def main(context, relcfg, args):

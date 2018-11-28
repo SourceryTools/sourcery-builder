@@ -18,10 +18,10 @@
 
 """sourcery-builder devel command."""
 
-import sourcery.build
+from sourcery.build import BuildContext
 import sourcery.command
-import sourcery.context
-import sourcery.relcfg
+from sourcery.context import add_parallelism_option
+from sourcery.relcfg import add_release_config_arg
 
 __all__ = ['Command']
 
@@ -33,9 +33,9 @@ class Command(sourcery.command.Command):
 
     @staticmethod
     def add_arguments(parser):
-        sourcery.context.add_parallelism_option(parser)
-        sourcery.relcfg.add_release_config_arg(parser)
+        add_parallelism_option(parser)
+        add_release_config_arg(parser)
 
     @staticmethod
     def main(context, relcfg, args):
-        sourcery.build.BuildContext(context, relcfg, args).run_build()
+        BuildContext(context, relcfg, args).run_build()

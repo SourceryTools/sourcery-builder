@@ -23,7 +23,7 @@ import subprocess
 import tempfile
 import unittest
 
-import sourcery.context
+from sourcery.context import ScriptError, ScriptContext
 from sourcery.makefile import command_to_make, Makefile
 
 __all__ = ['MakefileTestCase']
@@ -35,7 +35,7 @@ class MakefileTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up a makefile test."""
-        self.context = sourcery.context.ScriptContext()
+        self.context = ScriptContext()
 
     def test_command_to_make_basic(self):
         """Test basic use of command_to_make."""
@@ -54,7 +54,7 @@ class MakefileTestCase(unittest.TestCase):
 
     def test_command_to_make_errors(self):
         """Test errors from command_to_make."""
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'newline in command',
                                command_to_make, self.context, ['a\nb'])
 
@@ -84,25 +84,25 @@ class MakefileTestCase(unittest.TestCase):
     def test_makefile_errors(self):
         """Test errors from the Makefile class."""
         makefile = Makefile(self.context, 'all')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'target all already added',
                                makefile.add_target, 'all')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'target foo not known',
                                makefile.add_deps, 'foo', ['all'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'dependency foo not known',
                                makefile.add_deps, 'all', ['foo'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'target foo not known',
                                makefile.add_command, 'foo', 'some command')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'newline in command',
                                makefile.add_command, 'all', 'bad\ncommand')
         makefile.add_target('other')
         makefile.add_deps('all', ['other'])
         makefile.add_deps('other', ['all'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'circular dependency',
                                makefile.makefile_text)
 

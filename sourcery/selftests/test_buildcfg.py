@@ -21,7 +21,7 @@
 import unittest
 
 from sourcery.buildcfg import BuildCfg
-import sourcery.context
+from sourcery.context import ScriptError, ScriptContext
 
 __all__ = ['BuildCfgTestCase']
 
@@ -32,7 +32,7 @@ class BuildCfgTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up a BuildCfg test."""
-        self.context = sourcery.context.ScriptContext()
+        self.context = ScriptContext()
 
     def test_init_attrs(self):
         """Test public attributes set by __init__."""
@@ -49,14 +49,14 @@ class BuildCfgTestCase(unittest.TestCase):
 
     def test_init_errors(self):
         """Test errors from __init__."""
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'triplet must be a string',
                                BuildCfg, self.context, None)
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'ccopts must be a list of strings',
                                BuildCfg, self.context, 'i686-pc-linux-gnu',
                                ccopts='-m64')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'tool_opts values must be lists of strings',
                                BuildCfg, self.context, 'i686-pc-linux-gnu',
                                tool_opts={'as': '--64'})
@@ -242,17 +242,17 @@ class BuildCfgTestCase(unittest.TestCase):
     def test_configure_vars_errors(self):
         """Test errors from configure_vars."""
         cfg = BuildCfg(self.context, 'aarch64-linux-gnu')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'cflags_extra must be a list of strings',
                                cfg.configure_vars,
                                cflags_extra='-mfoo')
         cfg = BuildCfg(self.context, 'aarch64-linux-gnu')
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'contains non-shell-safe value',
                                cfg.configure_vars,
                                cflags_extra=['-DFOO="a b"'])
         cfg = BuildCfg(self.context, 'aarch64-linux-gnu',
                        ccopts=['-msomething=not shell safe'])
-        self.assertRaisesRegex(sourcery.context.ScriptError,
+        self.assertRaisesRegex(ScriptError,
                                'contains non-shell-safe value',
                                cfg.configure_vars)

@@ -20,6 +20,7 @@
 
 import os.path
 
+from sourcery.autoconf import add_host_tool_cfg_build_tasks
 import sourcery.component
 from sourcery.fstree import FSTreeRemove
 
@@ -83,7 +84,7 @@ class Component(sourcery.component.Component):
                        '--with-build-sysroot=%s' % build_sysroot_2,
                        '--with-build-time-tools=%s' % build_time_tools_2]
         if host == build:
-            group = sourcery.autoconf.add_host_tool_cfg_build_tasks(
+            group = add_host_tool_cfg_build_tasks(
                 cfg, host_b, component, host_group, name='gcc-first',
                 pkg_cfg_opts=opts_first)
             group.depend_install(host_b, 'gmp')
@@ -94,7 +95,7 @@ class Component(sourcery.component.Component):
             tree = cfg.install_tree_fstree(host_b, 'gcc-first')
             tree = FSTreeRemove(tree, [cfg.info_dir_rel.get()])
             host_group.contribute_implicit_install(host_b, 'toolchain-1', tree)
-        group = sourcery.autoconf.add_host_tool_cfg_build_tasks(
+        group = add_host_tool_cfg_build_tasks(
             cfg, host_b, component, host_group, name='gcc',
             pkg_cfg_opts=opts_second)
         group.depend_install(host_b, 'gmp')

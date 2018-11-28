@@ -18,7 +18,7 @@
 
 """sourcery-builder binutils component."""
 
-import sourcery.autoconf
+from sourcery.autoconf import add_host_tool_cfg_build_tasks
 import sourcery.component
 from sourcery.fstree import FSTreeRemove
 
@@ -35,8 +35,7 @@ class Component(sourcery.component.Component):
     @staticmethod
     def add_build_tasks_for_host(cfg, host, component, host_group):
         host_b = host.build_cfg
-        sourcery.autoconf.add_host_tool_cfg_build_tasks(
-            cfg, host_b, component, host_group)
+        add_host_tool_cfg_build_tasks(cfg, host_b, component, host_group)
         tree = cfg.install_tree_fstree(host_b, 'binutils')
         tree = FSTreeRemove(tree, [cfg.info_dir_rel.get()])
         if host == cfg.build.get():

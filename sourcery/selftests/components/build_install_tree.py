@@ -18,7 +18,7 @@
 
 """sourcery-builder build_install_tree component for testing."""
 
-import sourcery.buildtask
+from sourcery.buildtask import BuildTask
 import sourcery.component
 from sourcery.fstree import FSTreeMove
 
@@ -34,7 +34,7 @@ class Component(sourcery.component.Component):
 
     @staticmethod
     def add_build_tasks_for_first_host(cfg, host, component, host_group):
-        task = sourcery.buildtask.BuildTask(cfg, host_group, 'first-host')
+        task = BuildTask(cfg, host_group, 'first-host')
         host_b = host.build_cfg
         objdir = cfg.objdir_path(host_b, '%s-first' % component.copy_name)
         task.add_empty_dir(objdir)

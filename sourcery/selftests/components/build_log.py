@@ -18,7 +18,7 @@
 
 """sourcery-builder build_log component for testing."""
 
-import sourcery.buildtask
+from sourcery.buildtask import BuildTask
 import sourcery.component
 
 __all__ = ['Component']
@@ -33,7 +33,7 @@ class Component(sourcery.component.Component):
 
     @staticmethod
     def add_build_tasks_for_first_host(cfg, host, component, host_group):
-        task = sourcery.buildtask.BuildTask(cfg, host_group, 'first-host')
+        task = BuildTask(cfg, host_group, 'first-host')
         # Test that output gets properly redirected by build wrappers.
         # The generated output must not appear in the command being
         # run, to avoid the copy of the command in the log being

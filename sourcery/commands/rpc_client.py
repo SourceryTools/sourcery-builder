@@ -19,7 +19,7 @@
 """sourcery-builder rpc-client command."""
 
 import sourcery.command
-import sourcery.rpc
+from sourcery.rpc import send_message
 
 __all__ = ['Command']
 
@@ -39,6 +39,6 @@ class Command(sourcery.command.Command):
 
     @staticmethod
     def main(context, relcfg, args):
-        result = sourcery.rpc.send_message(args.dir, args.message)
+        result = send_message(args.dir, args.message)
         if result != 0:
             context.error('RPC message failed, status %d' % result)

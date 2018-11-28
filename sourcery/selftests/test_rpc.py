@@ -23,7 +23,7 @@ import os.path
 import tempfile
 import unittest
 
-import sourcery.rpc
+from sourcery.rpc import send_message, RPCServer
 
 __all__ = ['RPCTestCase']
 
@@ -39,7 +39,7 @@ class RPCTestCase(unittest.TestCase):
         self.testdir_td = tempfile.TemporaryDirectory()
         self.testdir = self.testdir_td.name
         self.server_running = False
-        self.server = sourcery.rpc.RPCServer(self.sockdir)
+        self.server = RPCServer(self.sockdir)
         self.rpc_test_var = 0
         self.clean_fds = set()
 
@@ -114,7 +114,7 @@ class RPCTestCase(unittest.TestCase):
         self.assertFalse(self.temp_file_exists('log1'))
         self.assertFalse(self.temp_file_exists('log2'))
         self.assertFalse(self.temp_file_exists('log3'))
-        ret = sourcery.rpc.send_message(self.sockdir, req1)
+        ret = send_message(self.sockdir, req1)
         self.assertEqual(ret, 0)
         self.assertTrue(self.temp_file_exists('out1'))
         self.assertEqual(self.temp_file_read('out1'), '0')
@@ -123,7 +123,7 @@ class RPCTestCase(unittest.TestCase):
         self.assertFalse(self.temp_file_exists('log1'))
         self.assertFalse(self.temp_file_exists('log2'))
         self.assertFalse(self.temp_file_exists('log3'))
-        ret = sourcery.rpc.send_message(self.sockdir, req2)
+        ret = send_message(self.sockdir, req2)
         self.assertEqual(ret, 0)
         self.assertTrue(self.temp_file_exists('out1'))
         self.assertEqual(self.temp_file_read('out1'), '0')
@@ -133,7 +133,7 @@ class RPCTestCase(unittest.TestCase):
         self.assertFalse(self.temp_file_exists('log1'))
         self.assertFalse(self.temp_file_exists('log2'))
         self.assertFalse(self.temp_file_exists('log3'))
-        ret = sourcery.rpc.send_message(self.sockdir, req3)
+        ret = send_message(self.sockdir, req3)
         self.assertEqual(ret, 0)
         self.assertTrue(self.temp_file_exists('out1'))
         self.assertEqual(self.temp_file_read('out1'), '0')
@@ -166,13 +166,13 @@ class RPCTestCase(unittest.TestCase):
         self.server_running = True
         self.assertFalse(self.temp_file_exists('log1'))
         self.assertFalse(self.temp_file_exists('log2'))
-        ret = sourcery.rpc.send_message(self.sockdir, req1)
+        ret = send_message(self.sockdir, req1)
         self.assertEqual(ret, 1)
         self.assertTrue(self.temp_file_exists('log1'))
         self.assertFalse(self.temp_file_exists('log2'))
         self.assertRegex(self.temp_file_read('log1'),
                          'ValueError.*test exception')
-        ret = sourcery.rpc.send_message(self.sockdir, req2)
+        ret = send_message(self.sockdir, req2)
         self.assertEqual(ret, 1)
         self.assertTrue(self.temp_file_exists('log1'))
         self.assertTrue(self.temp_file_exists('log2'))
@@ -193,7 +193,7 @@ class RPCTestCase(unittest.TestCase):
         self.server_running = True
         self.assertFalse(self.temp_file_exists('out'))
         self.assertFalse(self.temp_file_exists('log'))
-        ret = sourcery.rpc.send_message(self.sockdir, req)
+        ret = send_message(self.sockdir, req)
         self.assertEqual(ret, 0)
         self.assertTrue(self.temp_file_exists('out'))
         self.assertEqual(self.temp_file_read('out'), 'run')

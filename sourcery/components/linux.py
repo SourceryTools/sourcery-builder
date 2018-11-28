@@ -18,7 +18,7 @@
 
 """sourcery-builder linux component."""
 
-import sourcery.buildtask
+from sourcery.buildtask import BuildTask
 import sourcery.component
 from sourcery.fstree import FSTreeMove
 
@@ -42,7 +42,7 @@ class Component(sourcery.component.Component):
         objdir = cfg.objdir_path(host_b, 'linux')
         inst_name = 'linux-headers'
         instdir = cfg.install_tree_path(host_b, inst_name)
-        task = sourcery.buildtask.BuildTask(cfg, host_group, 'linux-headers')
+        task = BuildTask(cfg, host_group, 'linux-headers')
         task.provide_install(host_b, inst_name)
         task.add_empty_dir(objdir)
         task.add_empty_dir(instdir)

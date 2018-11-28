@@ -20,7 +20,7 @@
 
 import shlex
 
-import sourcery.tsort
+from sourcery.tsort import tsort
 
 __all__ = ['command_to_make', 'Makefile']
 
@@ -94,7 +94,7 @@ class Makefile:
     def makefile_text(self):
         """Return the text of this makefile."""
         # Verify there are no circular dependencies.
-        sourcery.tsort.tsort(self.context, self._deps)
+        tsort(self.context, self._deps)
         targets_sorted = [t for t in sorted(self._targets)
                           if t != self._first_target]
         targets_sorted = [self._first_target] + targets_sorted

@@ -25,8 +25,8 @@ import shutil
 import subprocess
 import tempfile
 
-import sourcery.buildtask
-import sourcery.rpc
+from sourcery.buildtask import BuildTask
+from sourcery.rpc import RPCServer
 
 __all__ = ['BuildContext']
 
@@ -43,7 +43,7 @@ class BuildContext:
         self.build_objdir = relcfg.objdir_path(None, 'build')
         self._tempdir_td = tempfile.TemporaryDirectory()
         self.sockdir = self._tempdir_td.name
-        self.server = sourcery.rpc.RPCServer(self.sockdir)
+        self.server = RPCServer(self.sockdir)
 
     def setup_build_dir(self):
         """Set up tasks and build directory for a configuration.
@@ -64,11 +64,10 @@ class BuildContext:
 
         """
         relcfg = self.relcfg
-        top_task = sourcery.buildtask.BuildTask(relcfg, None, '', True)
+        top_task = BuildTask(relcfg, None, '', True)
         first_host = True
         for host in relcfg.hosts.get():
-            host_task = sourcery.buildtask.BuildTask(relcfg, top_task,
-                                                     host.name, True)
+            host_task = BuildTask(relcfg, top_task, host.name, True)
             for component in relcfg.list_components():
                 component.cls.add_build_tasks_for_host(relcfg, host, component,
                                                        host_task)

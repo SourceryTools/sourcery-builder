@@ -20,8 +20,8 @@
 
 import os.path
 
-import sourcery.buildcfg
-import sourcery.buildtask
+from sourcery.buildcfg import BuildCfg
+from sourcery.buildtask import BuildTask
 import sourcery.component
 from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeUnion
 
@@ -45,18 +45,18 @@ class Component(sourcery.component.Component):
         # appropriate handling for files appearing for more than
         # multilib sharing the same sysroot and for headers shared by
         # all multilibs.
-        target_build = sourcery.buildcfg.BuildCfg(cfg.context, target)
+        target_build = BuildCfg(cfg.context, target)
         srcdir = component.vars.srcdir.get()
         objdir = cfg.objdir_path(target_build, 'glibc')
         instdir = cfg.install_tree_path(target_build, 'glibc')
-        group = sourcery.buildtask.BuildTask(cfg, host_group, 'glibc')
+        group = BuildTask(cfg, host_group, 'glibc')
         group.depend_install(host_b, 'toolchain-1')
         group.env_prepend('PATH', bindir_1)
         group.provide_install(target_build, 'glibc')
-        init_task = sourcery.buildtask.BuildTask(cfg, group, 'init')
+        init_task = BuildTask(cfg, group, 'init')
         init_task.add_empty_dir(objdir)
         init_task.add_empty_dir(instdir)
-        cfg_task = sourcery.buildtask.BuildTask(cfg, group, 'configure')
+        cfg_task = BuildTask(cfg, group, 'configure')
         cfg_cmd = [os.path.join(srcdir, 'configure'),
                    '--build=%s' % host_b.triplet,
                    '--host=%s' % target_build.triplet,
@@ -65,9 +65,9 @@ class Component(sourcery.component.Component):
         cfg_cmd.append('BUILD_CC=%s'
                        % ' '.join(host_b.tool('c-compiler')))
         cfg_task.add_command(cfg_cmd, cwd=objdir)
-        build_task = sourcery.buildtask.BuildTask(cfg, group, 'build')
+        build_task = BuildTask(cfg, group, 'build')
         build_task.add_make([], objdir)
-        install_task = sourcery.buildtask.BuildTask(cfg, group, 'install')
+        install_task = BuildTask(cfg, group, 'install')
         install_task.add_make(['-j1', 'install', 'install_root=%s' % instdir],
                               objdir)
         tree = cfg.install_tree_fstree(target_build, 'glibc')
@@ -91,7 +91,7 @@ class Component(sourcery.component.Component):
         target = cfg.target.get()
         # As for the first host, this should run in a loop over
         # multilibs.
-        target_build = sourcery.buildcfg.BuildCfg(cfg.context, target)
+        target_build = BuildCfg(cfg.context, target)
         tree = cfg.install_tree_fstree(target_build, 'glibc')
         sysroot_rel = cfg.sysroot_rel.get()
         tree = FSTreeMove(tree, sysroot_rel)

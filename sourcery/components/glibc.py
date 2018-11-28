@@ -35,6 +35,25 @@ class Component(sourcery.component.Component):
     def add_release_config_vars(group):
         group.source_type.set_implicit('open')
 
+    # These files may be regenerated in the source directory as part
+    # of building and testing glibc (some have been removed from the
+    # source tree in later glibc versions).  Even with timestamps in
+    # the right order, the glibc build process still writes into the
+    # source tree before commit
+    # f2da2fd81f1d3f43678de9cf39b12692c6fa449b ("Do not build .mo
+    # files in source directory (bug 14121)."), and, for Hurd, before
+    # commit b473b7d88e6829fd0c8a02512b86950dc7089039 ("Fix Hurd build
+    # with read-only source directory.").
+    files_to_touch = ['**/configure', '**/preconfigure', '**/*-kw.h',
+                      'intl/plural.c', 'locale/C-translit.h',
+                      'posix/ptestcases.h', 'posix/testcases.h',
+                      'sysdeps/gnu/errlist.c',
+                      'sysdeps/mach/hurd/bits/errno.h',
+                      'sysdeps/sparc/sparc32/rem.S',
+                      'sysdeps/sparc/sparc32/sdiv.S',
+                      'sysdeps/sparc/sparc32/udiv.S',
+                      'sysdeps/sparc/sparc32/urem.S']
+
     @staticmethod
     def add_build_tasks_for_first_host(cfg, host, component, host_group):
         host_b = host.build_cfg

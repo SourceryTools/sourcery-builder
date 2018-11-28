@@ -25,7 +25,38 @@ from sourcery.fstree import FSTreeMove
 __all__ = ['Component']
 
 
-_LINUX_ARCH_MAP = {'aarch64': 'arm64'}
+# This covers all architectures that, as of November 2018, have
+# support in both the Linux kernel and GNU config.sub, but does not
+# try to cover all the variant legacy aliases for some architectures
+# that are also supported by config.sub.
+_LINUX_ARCH_MAP = {'aarch64': 'arm64',
+                   'alpha': 'alpha',
+                   'arc': 'arc',
+                   'arm': 'arm',
+                   'c6x': 'c6x',
+                   'csky': 'csky',
+                   'h8300': 'h8300',
+                   'hexagon': 'hexagon',
+                   'hppa': 'parisc',
+                   'i486': 'x86',
+                   'i586': 'x86',
+                   'i686': 'x86',
+                   'i786': 'x86',
+                   'ia64': 'ia64',
+                   'm68k': 'm68k',
+                   'microblaze': 'microblaze',
+                   'mips': 'mips',
+                   'nds32': 'nds32',
+                   'nios2': 'nios2',
+                   'or1k': 'openrisc',
+                   'powerpc': 'powerpc',
+                   'riscv': 'riscv',
+                   's390': 's390',
+                   'sh': 'sh',
+                   'sparc': 'sparc',
+                   'tic6x': 'c6x',
+                   'x86_64': 'x86',
+                   'xtensa': 'xtensa'}
 
 
 class Component(sourcery.component.Component):

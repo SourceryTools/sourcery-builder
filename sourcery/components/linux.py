@@ -58,6 +58,23 @@ _LINUX_ARCH_MAP = {'aarch64': 'arm64',
                    'x86_64': 'x86',
                    'xtensa': 'xtensa'}
 
+_INST_NAME = 'linux-headers'
+
+
+def _contribute_headers_tree(cfg, host_b, host_group, is_build):
+    """Contribute the installed headers to all required install trees."""
+    build = cfg.build.get().build_cfg
+    tree = cfg.install_tree_fstree(build, _INST_NAME)
+    # headers_install puts headers in an include/ subdirectory of the
+    # given path.
+    tree = FSTreeMove(tree, '%s/usr' % cfg.sysroot_rel.get())
+    if is_build:
+        host_group.contribute_implicit_install(host_b, 'toolchain-1-before',
+                                               tree)
+        host_group.contribute_implicit_install(host_b, 'toolchain-1', tree)
+    host_group.contribute_implicit_install(host_b, 'toolchain-2-before', tree)
+    host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+
 
 class Component(sourcery.component.Component):
     """sourcery-builder linux component implementation."""
@@ -71,10 +88,9 @@ class Component(sourcery.component.Component):
         host_b = host.build_cfg
         srcdir = component.vars.srcdir.get()
         objdir = cfg.objdir_path(host_b, 'linux')
-        inst_name = 'linux-headers'
-        instdir = cfg.install_tree_path(host_b, inst_name)
+        instdir = cfg.install_tree_path(host_b, _INST_NAME)
         task = BuildTask(cfg, host_group, 'linux-headers')
-        task.provide_install(host_b, inst_name)
+        task.provide_install(host_b, _INST_NAME)
         task.add_empty_dir(objdir)
         task.add_empty_dir(instdir)
         linux_arch = None
@@ -89,24 +105,9 @@ class Component(sourcery.component.Component):
         task.add_make(['-C', srcdir, 'O=%s' % objdir, 'ARCH=%s' % linux_arch,
                        'INSTALL_HDR_PATH=%s' % instdir,
                        'headers_install'], objdir)
-        tree = cfg.install_tree_fstree(host_b, inst_name)
-        # headers_install puts headers in an include/ subdirectory of
-        # the given path.
-        tree = FSTreeMove(tree, '%s/usr' % cfg.sysroot_rel.get())
-        host_group.contribute_implicit_install(host_b, 'toolchain-1-before',
-                                               tree)
-        host_group.contribute_implicit_install(host_b, 'toolchain-1', tree)
-        host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
-                                               tree)
-        host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+        _contribute_headers_tree(cfg, host_b, host_group, True)
 
     @staticmethod
     def add_build_tasks_for_other_hosts(cfg, host, component, host_group):
         host_b = host.build_cfg
-        build = cfg.build.get().build_cfg
-        inst_name = 'linux-headers'
-        tree = cfg.install_tree_fstree(build, inst_name)
-        tree = FSTreeMove(tree, '%s/usr' % cfg.sysroot_rel.get())
-        host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
-                                               tree)
-        host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+        _contribute_headers_tree(cfg, host_b, host_group, False)

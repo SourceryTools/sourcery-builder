@@ -313,15 +313,19 @@ class BuildContextTestCase(unittest.TestCase):
                           {}))
         self.assertEqual(stdout, '')
         lines = stderr.splitlines()
-        self.assertEqual(len(lines), 8)
+        self.assertEqual(len(lines), 12)
         for line in lines:
             self.assertRegex(line,
                              r'^\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] '
-                             r'\[000[1-4]/0004\] /.*(start|end)\Z')
-        self.assertIn('[0001/0004]', stderr)
-        self.assertIn('[0004/0004]', stderr)
+                             r'\[000[1-6]/0006\] /.*(start|end)\Z')
+        self.assertIn('[0001/0006]', stderr)
+        self.assertIn('[0006/0006]', stderr)
         self.assertIn('/x86_64-linux-gnu/all-hosts start', stderr)
         self.assertIn('/x86_64-w64-mingw32/other-hosts end', stderr)
+        self.assertIn('/install-trees-x86_64-linux-gnu/package-input start',
+                      stderr)
+        self.assertIn('/install-trees-x86_64-w64-mingw32/package-input end',
+                      stderr)
 
     def test_run_build_silent(self):
         """Test run_build, simple successful build, silent."""
@@ -338,8 +342,10 @@ class BuildContextTestCase(unittest.TestCase):
         self.setup_rc('cfg.add_component("build_log")\n')
         with self.redirect_stdout_stderr():
             self.build_context.run_build()
+        # Tasks for package-input tree end up as 0001 and 0002 because
+        # nothing actually contributes to that tree.
         log = os.path.join(self.build_context.logdir,
-                           '0001-x86_64-linux-gnu-first-host-log.txt')
+                           '0003-x86_64-linux-gnu-first-host-log.txt')
         with open(log, 'r', encoding='utf-8') as file:
             log_text = file.read()
         num_text_1 = '\n'.join(str(n) for n in range(10))
@@ -355,8 +361,10 @@ class BuildContextTestCase(unittest.TestCase):
                                    self.build_context.run_build)
         stdout, stderr = self.stdout_stderr_read()
         self.assertEqual(stdout, '')
+        # Tasks for package-input tree end up as 0001 and 0002 because
+        # nothing actually contributes to that tree.
         log = os.path.join(self.build_context.logdir,
-                           '0001-x86_64-linux-gnu-first-host-log.txt')
+                           '0003-x86_64-linux-gnu-first-host-log.txt')
         with open(log, 'r', encoding='utf-8') as file:
             log_text = file.read()
         self.assertIn('1\n2\n3\n4\n', log_text)
@@ -371,8 +379,10 @@ class BuildContextTestCase(unittest.TestCase):
                                    self.build_context.run_build)
         stdout, stderr = self.stdout_stderr_read()
         self.assertEqual(stdout, '')
+        # Tasks for package-input tree end up as 0001 and 0002 because
+        # nothing actually contributes to that tree.
         log = os.path.join(self.build_context.logdir,
-                           '0001-x86_64-linux-gnu-first-host-log.txt')
+                           '0003-x86_64-linux-gnu-first-host-log.txt')
         with open(log, 'r', encoding='utf-8') as file:
             log_text = file.read()
         self.assertIn('1\n2\n3\n4\n', log_text)
@@ -394,8 +404,10 @@ class BuildContextTestCase(unittest.TestCase):
                                    self.build_context.run_build)
         stdout, stderr = self.stdout_stderr_read()
         self.assertEqual(stdout, '')
+        # Tasks for package-input tree end up as 0001 and 0002 because
+        # nothing actually contributes to that tree.
         log = os.path.join(self.build_context.logdir,
-                           '0001-x86_64-linux-gnu-first-host-log.txt')
+                           '0003-x86_64-linux-gnu-first-host-log.txt')
         with open(log, 'r', encoding='utf-8') as file:
             log_text = file.read()
         self.assertRegex(log_text, 'ValueError.*test failure')

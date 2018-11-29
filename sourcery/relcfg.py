@@ -611,7 +611,7 @@ class ReleaseConfig:
         self.context = context
         self._vg = ConfigVarGroup(context, '')
         self._vg.add_release_config_vars()
-        self._components = set()
+        self._components = {'package'}
         loader.load_config(self, release_config)
         build_orig = self.build.get()
         if not isinstance(build_orig, PkgHost):

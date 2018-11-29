@@ -43,12 +43,15 @@ class InfoTextTestCase(unittest.TestCase):
     def test_info_text(self):
         """Test the info_text function."""
         loader = ReleaseConfigTextLoader()
-        # Test a trivial config, with no components.
+        # Test a trivial config, with no explicitly added components
+        # (but implicit components still present).
         relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         text = info_text(relcfg, False, False)
-        self.assertEqual(text.rstrip(), 'Components:')
+        self.assertEqual(text,
+                         '%-30s package\n\n%-30s (no source)'
+                         % ('Components:', 'package'))
         text = info_text(relcfg, True, False)
         self.assertTrue(text.startswith('Components:'))
         self.assertIn('\n\nVariables:\n\n', text)
@@ -75,7 +78,7 @@ class InfoTextTestCase(unittest.TestCase):
         text = info_text(relcfg, False, False)
         self.assertTrue(text.startswith('%-30s %s\n\n'
                                         % ('Components:',
-                                           'generic zz_no_source')))
+                                           'generic package zz_no_source')))
         self.assertIn('\n\n%-30s 1.23\n' % 'generic', text)
         self.assertTrue(text.endswith('\n%-30s (no source)' % 'zz_no_source'))
         text = info_text(relcfg, True, False)

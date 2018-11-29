@@ -718,6 +718,48 @@ class BuildTaskTestCase(unittest.TestCase):
                                sub1_task.contribute_implicit_install, impl_pkg,
                                'test-3', tree)
 
+    def test_contribute_package(self):
+        """Test contribute_package."""
+        top_task = BuildTask(self.relcfg, None, '', True)
+        sub1_task = BuildTask(self.relcfg, top_task, 'a', False)
+        impl_pkg = self.relcfg.build.get()
+        impl_build = BuildCfg(self.context, 'aarch64-linux-gnu')
+        top_task.declare_implicit_install(impl_pkg, 'package-input')
+        tree = FSTreeEmpty(self.context)
+        sub1_task.define_implicit_install(impl_build, 'test', tree)
+        sub1_task.define_implicit_install(impl_build, 'test2', tree)
+        tree1_pkg = self.relcfg.install_tree_fstree(impl_build, 'test')
+        tree2_pkg = self.relcfg.install_tree_fstree(impl_build, 'test2')
+        sub1_task.contribute_package(impl_pkg, tree1_pkg)
+        sub1_task.contribute_package(impl_pkg, tree2_pkg)
+        top_task.finalize()
+        deps = {}
+        top_task.record_deps(deps)
+        # The details of tasks set up for implicitly created install
+        # trees are tested in tests of finalize.
+        print('%s' % str(deps))
+        self.assertIn(
+            'task-end/install-trees-x86_64-linux-gnu/package-input',
+            deps['install-trees/x86_64-linux-gnu/package-input'])
+        self.assertIn(
+            'install-trees/aarch64-linux-gnu/test',
+            deps['task-start/install-trees-x86_64-linux-gnu/package-input'])
+        self.assertIn(
+            'install-trees/aarch64-linux-gnu/test2',
+            deps['task-start/install-trees-x86_64-linux-gnu/package-input'])
+
+    def test_contribute_package_errors(self):
+        """Test errors from contribute_package."""
+        top_task = BuildTask(self.relcfg, None, '', True)
+        sub1_task = BuildTask(self.relcfg, top_task, 'a', False)
+        impl_pkg = self.relcfg.build.get()
+        top_task.declare_implicit_install(impl_pkg, 'package-input')
+        tree = FSTreeEmpty(self.context)
+        top_task.finalize()
+        self.assertRaisesRegex(ScriptError,
+                               'contribute_package called after finalization',
+                               sub1_task.contribute_package, impl_pkg, tree)
+
     def test_define_implicit_install(self):
         """Test define_implicit_install."""
         top_task = BuildTask(self.relcfg, None, '', True)

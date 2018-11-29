@@ -103,6 +103,7 @@ class Component(sourcery.component.Component):
         host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
                                                tree)
         host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+        host_group.contribute_package(host, tree)
 
     @staticmethod
     def add_build_tasks_for_other_hosts(cfg, host, component, host_group):
@@ -125,3 +126,4 @@ class Component(sourcery.component.Component):
         host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
                                                tree)
         host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+        host_group.contribute_package(host, tree)

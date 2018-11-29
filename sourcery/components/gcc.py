@@ -106,6 +106,7 @@ class Component(sourcery.component.Component):
         tree = cfg.install_tree_fstree(host_b, 'gcc')
         tree = FSTreeRemove(tree, [cfg.info_dir_rel.get()])
         host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+        host_group.contribute_package(host, tree)
 
     @staticmethod
     def configure_opts(cfg, host):

@@ -934,6 +934,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         self.assertEqual(relcfg.list_components(),
                          (relcfg.get_component('generic'),
+                          relcfg.get_component('package'),
                           relcfg.get_component('postcheckout')))
 
     def test_add_component_errors(self):
@@ -953,7 +954,8 @@ class ReleaseConfigTestCase(unittest.TestCase):
         relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
-        self.assertEqual(relcfg.list_components(), ())
+        self.assertEqual(relcfg.list_components(),
+                         (relcfg.get_component('package'),))
         relcfg_text = ('cfg.add_component("postcheckout")\n'
                        'cfg.postcheckout.version.set("2")\n'
                        'cfg.add_component("generic")\n'
@@ -963,6 +965,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         self.assertEqual(relcfg.list_components(),
                          (relcfg.get_component('generic'),
+                          relcfg.get_component('package'),
                           relcfg.get_component('postcheckout')))
 
     def test_list_source_components(self):

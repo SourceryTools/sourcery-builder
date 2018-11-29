@@ -19,4 +19,4 @@
 """Sourcery Builder components package."""
 
 __all__ = ['binutils', 'gcc', 'glibc', 'gmp', 'linux', 'mpc', 'mpfr',
-           'toolchain']
+           'package', 'toolchain']

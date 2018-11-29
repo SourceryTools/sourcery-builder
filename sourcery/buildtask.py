@@ -465,6 +465,19 @@ class BuildTask:
         else:
             self._implicit_contribute[tree_tuple] = tree
 
+    def contribute_package(self, host, tree):
+        """Add an FSTree object to the package for the given PkgHost.
+
+        The package-input install tree used is created automatically
+        by the package component.
+
+        Calling this on any task is equivalent to calling it on the
+        top-level task.
+
+        """
+        self._require_not_finalized('contribute_package')
+        self.contribute_implicit_install(host, 'package-input', tree)
+
     def define_implicit_install(self, host, name, tree):
         """Define an implicitly created install tree with an FSTree object.
 

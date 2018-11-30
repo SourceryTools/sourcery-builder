@@ -1,4 +1,4 @@
-# Initialize sourcery.commands package.
+# sourcery-builder release command.
 
 # Copyright 2018 Mentor Graphics Corporation.
 
@@ -16,6 +16,29 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder commands package."""
+"""sourcery-builder release command."""
 
-__all__ = ['checkout', 'devel', 'info', 'release', 'rpc_client', 'self_test']
+import os
+
+from sourcery.build import BuildContext
+import sourcery.command
+from sourcery.relcfg import add_release_config_arg
+
+__all__ = ['Command']
+
+
+class Command(sourcery.command.Command):
+    """sourcery-builder release implementation."""
+
+    short_desc = 'Build a release of a config.'
+
+    check_script = True
+
+    @staticmethod
+    def add_arguments(parser):
+        add_release_config_arg(parser)
+
+    @staticmethod
+    def main(context, relcfg, args):
+        args.parallelism = os.cpu_count()
+        BuildContext(context, relcfg, args).run_build()

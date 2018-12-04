@@ -20,5 +20,5 @@
 
 __all__ = ['support', 'test_autoconf', 'test_build', 'test_buildcfg',
            'test_buildtask', 'test_context', 'test_fstree', 'test_info',
-           'test_makefile', 'test_pkghost', 'test_relcfg', 'test_rpc',
-           'test_tsort', 'test_vc']
+           'test_makefile', 'test_package', 'test_pkghost', 'test_relcfg',
+           'test_rpc', 'test_tsort', 'test_vc']

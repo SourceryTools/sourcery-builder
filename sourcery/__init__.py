@@ -19,5 +19,5 @@
 """Sourcery Builder package."""
 
 __all__ = ['autoconf', 'build', 'buildcfg', 'buildtask', 'command',
-           'component', 'context', 'fstree', 'makefile', 'pkghost', 'relcfg',
-           'rpc', 'tsort', 'vc']
+           'component', 'context', 'fstree', 'makefile', 'package', 'pkghost',
+           'relcfg', 'rpc', 'tsort', 'vc']

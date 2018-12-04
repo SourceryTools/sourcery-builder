@@ -23,6 +23,7 @@ import io
 import os
 import os.path
 import shutil
+import stat
 import subprocess
 import tempfile
 import time
@@ -30,6 +31,7 @@ import unittest
 
 from sourcery.context import add_common_options, ScriptContext
 from sourcery.relcfg import ReleaseConfig, ReleaseConfigTextLoader
+from sourcery.selftests.support import read_files
 from sourcery.vc import GitVC, SvnVC, TarVC
 
 __all__ = ['VCTestCase', 'VCRelCfgTestCase']
@@ -48,6 +50,7 @@ class VCTestCase(unittest.TestCase):
         self.svndir = os.path.join(self.tempdir, 'svn')
         self.codir = os.path.join(self.tempdir, 'co')
         self.srcdir = os.path.join(self.tempdir, 'src')
+        self.srcdir_copy = os.path.join(self.tempdir, 'src-copy')
 
     def tearDown(self):
         """Tear down a version control test."""
@@ -141,6 +144,32 @@ class VCTestCase(unittest.TestCase):
         vc_obj = GitVC(self.context, '/example', 'branch')
         self.assertEqual(repr(vc_obj), "GitVC('/example', 'branch')")
 
+    def test_git_metadata_paths(self):
+        """Test GitVC.metadata_paths."""
+        vc_obj = GitVC(self.context, '/example')
+        self.assertEqual(vc_obj.metadata_paths('/some/where'),
+                         {'/some/where/.git'})
+
+    def test_git_copy_without_metadata(self):
+        """Test copying checkouts from git."""
+        os.mkdir(self.codir)
+        subprocess.run(['git', 'init', '-q'], cwd=self.codir, check=True)
+        self.co_file_write('gitfile', 'gitfile contents')
+        subprocess.run(['git', 'add', '.'], cwd=self.codir, check=True)
+        subprocess.run(['git', 'commit', '-q', '-m', 'commit message'],
+                       cwd=self.codir, check=True)
+        vc_obj = GitVC(self.context, self.codir)
+        vc_obj.vc_checkout(self.srcdir, False)
+        os.chmod(os.path.join(self.srcdir, 'gitfile'), stat.S_IRUSR)
+        vc_obj.copy_without_metadata(self.srcdir, self.srcdir_copy)
+        self.assertEqual(read_files(self.srcdir_copy),
+                         (set(), {'gitfile': 'gitfile contents'}, {}))
+        mode = stat.S_IMODE(os.stat(os.path.join(self.srcdir_copy,
+                                                 'gitfile')).st_mode)
+        self.assertEqual(mode,
+                         (stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP
+                          | stat.S_IROTH))
+
     def test_svn(self):
         """Test checkouts from SVN."""
         subprocess.run(['svnadmin', 'create', self.svndir], check=True)
@@ -185,6 +214,39 @@ class VCTestCase(unittest.TestCase):
         """Test SvnVC.__repr__."""
         vc_obj = SvnVC(self.context, 'file:///example')
         self.assertEqual(repr(vc_obj), "SvnVC('file:///example')")
+
+    def test_svn_metadata_paths(self):
+        """Test SvnVC.metadata_paths."""
+        vc_obj = SvnVC(self.context, '/example')
+        self.assertEqual(vc_obj.metadata_paths('/some/where'),
+                         {'/some/where/.svn'})
+
+    def test_svn_copy_without_metadata(self):
+        """Test copying checkouts from SVN."""
+        subprocess.run(['svnadmin', 'create', self.svndir], check=True)
+        svn_uri = 'file://%s' % self.svndir
+        subprocess.run(['svn', '-q', 'co', svn_uri, self.codir], check=True)
+        self.co_file_write('svnfile', 'svnfile contents')
+        os.mkdir(self.co_file('dir'))
+        self.co_file_write('dir/file2', 'file2 contents')
+        subprocess.run(['svn', '-q', 'add', 'svnfile', 'dir'], cwd=self.codir,
+                       check=True)
+        subprocess.run(['svn', '-q', 'commit', '-m', 'commit message'],
+                       cwd=self.codir, check=True)
+        vc_obj = SvnVC(self.context, svn_uri)
+        vc_obj.vc_checkout(self.srcdir, False)
+        os.chmod(os.path.join(self.srcdir, 'svnfile'), stat.S_IRWXU)
+        vc_obj.copy_without_metadata(self.srcdir, self.srcdir_copy)
+        self.assertEqual(read_files(self.srcdir_copy),
+                         ({'dir'},
+                          {'svnfile': 'svnfile contents',
+                           'dir/file2': 'file2 contents'},
+                          {}))
+        mode = stat.S_IMODE(os.stat(os.path.join(self.srcdir_copy,
+                                                 'svnfile')).st_mode)
+        self.assertEqual(mode,
+                         (stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP
+                          | stat.S_IROTH | stat.S_IXOTH))
 
     def test_tar(self):
         """Test checkouts from tarballs."""
@@ -272,6 +334,26 @@ class VCTestCase(unittest.TestCase):
         """Test TarVC.__repr__."""
         vc_obj = TarVC(self.context, '/test.tar')
         self.assertEqual(repr(vc_obj), "TarVC('/test.tar')")
+
+    def test_tar_metadata_paths(self):
+        """Test TarVC.metadata_paths."""
+        vc_obj = TarVC(self.context, '/example')
+        self.assertEqual(vc_obj.metadata_paths('/some/where'), set())
+
+    def test_tar_copy_without_metadata(self):
+        """Test copying checkouts from tarballs."""
+        os.mkdir(self.codir)
+        self.co_file_write('.git', '.git contents')
+        self.co_file_write('.svn', '.svn contents')
+        subprocess.run(['tar', '-c', '-z', '-f', 'test.tar.gz', 'co'],
+                       cwd=self.tempdir, check=True)
+        vc_obj = TarVC(self.context, os.path.join(self.tempdir, 'test.tar.gz'))
+        vc_obj.vc_checkout(self.srcdir, False)
+        vc_obj.copy_without_metadata(self.srcdir, self.srcdir_copy)
+        self.assertEqual(read_files(self.srcdir_copy),
+                         (set(),
+                          {'.git': '.git contents', '.svn': '.svn contents'},
+                          {}))
 
 
 class VCRelCfgTestCase(unittest.TestCase):

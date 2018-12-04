@@ -21,7 +21,10 @@
 import glob
 import os
 import os.path
+import shutil
 import tempfile
+
+from sourcery.package import fix_perms
 
 __all__ = ['VC', 'GitVC', 'SvnVC', 'TarVC']
 
@@ -83,6 +86,39 @@ class VC:
             self.context.execute(['touch'] + files_to_touch)
         component.cls.postcheckout(self.context, component)
 
+    def metadata_paths(self, srcdir):
+        """Return a set of paths that contain version control metadata.
+
+        The files and directories listed will be excluded from source
+        packages, as not logically part of the component sources.
+
+        """
+
+        raise NotImplementedError
+
+    def copy_without_metadata(self, srcdir, srcdir_copy):
+        """Copy a checked-out source directory, excluding version control
+        metadata.
+
+        The parent directory of the destination directory must exist,
+        but not the destination directory itself.  The resulting
+        directory has its permissions put into a canonical form (in
+        particular, making files and directories writable), and is
+        suitable for creating source packages, or for building
+        components whose build process may write into the source
+        directory.
+
+        """
+        exclude_paths = set(self.metadata_paths(srcdir))
+
+        def ignore_fn(path, names):
+            """Return names for copytree to ignore."""
+            return [name for name in names
+                    if os.path.join(path, name) in exclude_paths]
+
+        shutil.copytree(srcdir, srcdir_copy, symlinks=True, ignore=ignore_fn)
+        fix_perms(srcdir_copy)
+
 
 class GitVC(VC):
     """Class for sources coming from git."""
@@ -107,6 +143,9 @@ class GitVC(VC):
         else:
             self.context.execute(['git', 'clone', '-b', self._branch,
                                   '-q', self._uri, srcdir])
+
+    def metadata_paths(self, srcdir):
+        return {os.path.join(srcdir, '.git')}
 
 
 class SvnVC(VC):
@@ -137,6 +176,11 @@ class SvnVC(VC):
         else:
             self.context.execute(['svn', '-q', 'co', '--ignore-externals',
                                   self._uri, srcdir])
+
+    def metadata_paths(self, srcdir):
+        # This assumes Subversion 1.7 or later with a single top-level
+        # .svn directory, rather than .svn in every subdirectory.
+        return {os.path.join(srcdir, '.svn')}
 
 
 class TarVC(VC):
@@ -175,3 +219,6 @@ class TarVC(VC):
                     os.rename(contents[0].path, srcdir)
                 else:
                     os.rename(thisdir, srcdir)
+
+    def metadata_paths(self, srcdir):
+        return set()

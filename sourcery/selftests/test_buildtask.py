@@ -737,7 +737,6 @@ class BuildTaskTestCase(unittest.TestCase):
         top_task.record_deps(deps)
         # The details of tasks set up for implicitly created install
         # trees are tested in tests of finalize.
-        print('%s' % str(deps))
         self.assertIn(
             'task-end/install-trees-x86_64-linux-gnu/package-input',
             deps['install-trees/x86_64-linux-gnu/package-input'])

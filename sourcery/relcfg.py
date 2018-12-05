@@ -786,6 +786,18 @@ class ReleaseConfig:
         else:
             return os.path.join(objdir, '%s-%s' % (name, host.name))
 
+    def pkgdir_path(self, host, suffix):
+        """Return the name, in pkgdir, to use for a package.
+
+        The host argument may be a PkgHost, or None for a
+        host-independent package.
+
+        """
+        prefix = self.pkg_name_full.get()
+        host_text = '' if host is None else '-%s' % host.name
+        return os.path.join(self.args.pkgdir,
+                            '%s%s%s' % (prefix, host_text, suffix))
+
     def install_tree_path(self, host, name):
         """Return the name to use for an install tree.
 

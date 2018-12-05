@@ -1125,6 +1125,21 @@ class ReleaseConfigTestCase(unittest.TestCase):
                                       'toolchain-1.0-1-aarch64-linux-gnu',
                                       'next-some-other-name'))
 
+    def test_pkgdir_path(self):
+        """Test ReleaseConfig.pkgdir_path."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.pkgdir_path(None, '.src.tar.xz'),
+                         os.path.join(self.args.pkgdir,
+                                      'toolchain-1.0-1-aarch64-linux-gnu'
+                                      '.src.tar.xz'))
+        self.assertEqual(relcfg.pkgdir_path(relcfg.build.get(), '.tar.xz'),
+                         os.path.join(self.args.pkgdir,
+                                      'toolchain-1.0-1-aarch64-linux-gnu'
+                                      '-x86_64-linux-gnu.tar.xz'))
+
     def test_install_tree_path(self):
         """Test ReleaseConfig.install_tree_path."""
         loader = ReleaseConfigTextLoader()

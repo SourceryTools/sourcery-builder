@@ -24,7 +24,7 @@ import os
 import os.path
 import stat
 
-__all__ = ['fix_perms', 'hard_link_files']
+__all__ = ['fix_perms', 'hard_link_files', 'tar_command']
 
 
 _NOEX_PERM = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
@@ -90,3 +90,16 @@ def hard_link_files(context, path):
                                       % (first, name))
                 os.remove(name)
                 os.link(first, name)
+
+
+def tar_command(output_name, top_dir_name, source_date_epoch):
+    """Return a tar command to create a tarball package.
+
+    The command is to be run in the directory to be packaged;
+    top_dir_name will be used as the name of the top-level directory
+    in the tarball, and source_date_epoch for timestamps.
+
+    """
+    return ['tar', '-c', '-J', '-f', output_name, '--sort=name',
+            '--mtime=@%d' % source_date_epoch, '--owner=0', '--group=0',
+            '--numeric-owner', r'--transform=s|^\.|%s|rSh' % top_dir_name, '.']

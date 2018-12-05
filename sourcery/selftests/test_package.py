@@ -21,11 +21,13 @@
 import os
 import os.path
 import stat
+import subprocess
+import tarfile
 import tempfile
 import unittest
 
 from sourcery.context import ScriptContext
-from sourcery.package import fix_perms, hard_link_files
+from sourcery.package import fix_perms, hard_link_files, tar_command
 from sourcery.selftests.support import create_files, read_files
 
 __all__ = ['PackageTestCase']
@@ -113,3 +115,49 @@ class PackageTestCase(unittest.TestCase):
         self.assertEqual(stat_b2.st_nlink, 2)
         self.assertEqual(stat_b1.st_dev, stat_b2.st_dev)
         self.assertEqual(stat_b1.st_ino, stat_b2.st_ino)
+
+    def test_tar_command(self):
+        """Test the tar_command function."""
+        self.assertEqual(tar_command('/some/where/example.tar.xz',
+                                     'top+dir-1.0', 1234567890),
+                         ['tar', '-c', '-J', '-f',
+                          '/some/where/example.tar.xz', '--sort=name',
+                          '--mtime=@1234567890', '--owner=0', '--group=0',
+                          '--numeric-owner',
+                          r'--transform=s|^\.|top+dir-1.0|rSh', '.'])
+
+    def test_tar_command_run(self):
+        """Test running the command from the tar_command function."""
+        create_files(self.indir, ['a', 'b', 'b/c'],
+                     {'a1': 'a', 'a2': 'a', 'b/c/a3': 'a', 'b/a4': 'a',
+                      'b1': 'b', 'b/b2': 'b', 'c': 'c'},
+                     {'a-link': 'a1', 'dead-link': 'bad'})
+        hard_link_files(self.context, self.indir)
+        test_tar_xz = os.path.join(self.tempdir, 'test.tar.xz')
+        subprocess.run(tar_command(test_tar_xz, 'top+dir-1.0', 1234567890),
+                       cwd=self.indir, check=True)
+        subprocess.run(['tar', '-x', '-f', test_tar_xz], cwd=self.tempdir,
+                       check=True)
+        outdir = os.path.join(self.tempdir, 'top+dir-1.0')
+        self.assertEqual(read_files(outdir),
+                         ({'a', 'b', 'b/c'},
+                          {'a1': 'a', 'a2': 'a', 'b/c/a3': 'a', 'b/a4': 'a',
+                           'b1': 'b', 'b/b2': 'b', 'c': 'c'},
+                          {'a-link': 'a1', 'dead-link': 'bad'}))
+        stat_a1 = os.stat(os.path.join(outdir, 'a1'))
+        self.assertEqual(stat_a1.st_nlink, 4)
+        self.assertEqual(stat_a1.st_mtime, 1234567890)
+        stat_dead_link = os.stat(os.path.join(outdir, 'dead-link'),
+                                 follow_symlinks=False)
+        self.assertEqual(stat_dead_link.st_mtime, 1234567890)
+        # Test that the files are correctly sorted in the tarball.
+        subprocess.run(['xz', '-d', test_tar_xz], check=True)
+        tarfile_obj = tarfile.open(os.path.join(self.tempdir, 'test.tar'),
+                                   'r:')
+        self.assertEqual(tarfile_obj.getnames(),
+                         ['top+dir-1.0', 'top+dir-1.0/a', 'top+dir-1.0/a-link',
+                          'top+dir-1.0/a1', 'top+dir-1.0/a2', 'top+dir-1.0/b',
+                          'top+dir-1.0/b/a4', 'top+dir-1.0/b/b2',
+                          'top+dir-1.0/b/c', 'top+dir-1.0/b/c/a3',
+                          'top+dir-1.0/b1', 'top+dir-1.0/c',
+                          'top+dir-1.0/dead-link'])

@@ -684,19 +684,21 @@ class ReleaseConfig:
                                     self.pkg_build.get()),
                          """The version number of this release.""",
                          internal=True)
-        self._vg.add_var('pkg_name_no_target',
+        self._vg.add_var('pkg_name_no_target_build',
                          ConfigVarType(self.context, str),
                          '%s-%s' % (self.pkg_prefix.get(),
-                                    self.version.get()),
-                         """The prefix and version number of this release.
+                                    self.pkg_version.get()),
+                         """The prefix and version number of this release,
+                         without the build number.
 
                          This is used in the name of the directory into which
                          release packages unpack.""",
                          internal=True)
         self._vg.add_var('pkg_name_full',
                          ConfigVarType(self.context, str),
-                         '%s-%s' % (self.pkg_name_no_target.get(),
-                                    self.target.get()),
+                         '%s-%s-%s' % (self.pkg_prefix.get(),
+                                       self.version.get(),
+                                       self.target.get()),
                          """The prefix, version number and target triplet of
                          this release.
 

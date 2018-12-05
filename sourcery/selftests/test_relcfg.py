@@ -880,7 +880,8 @@ class ReleaseConfigTestCase(unittest.TestCase):
         self.assertEqual(relcfg.info_dir_rel.get(),
                          'opt/toolchain/share/info/dir')
         self.assertEqual(relcfg.version.get(), '1.0-1')
-        self.assertEqual(relcfg.pkg_name_no_target.get(), 'toolchain-1.0-1')
+        self.assertEqual(relcfg.pkg_name_no_target_build.get(),
+                         'toolchain-1.0')
         self.assertEqual(relcfg.pkg_name_full.get(),
                          'toolchain-1.0-1-aarch64-linux-gnu')
         self.assertEqual(relcfg.pkg_name_no_version.get(),
@@ -929,7 +930,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
                          ['bindir', 'bindir_rel', 'build', 'env_set', 'hosts',
                           'info_dir_rel', 'installdir', 'installdir_rel',
                           'interp', 'pkg_build', 'pkg_name_full',
-                          'pkg_name_no_target', 'pkg_name_no_version',
+                          'pkg_name_no_target_build', 'pkg_name_no_version',
                           'pkg_prefix', 'pkg_version', 'script_full',
                           'source_date_epoch', 'sysroot', 'sysroot_rel',
                           'target', 'version'])

@@ -303,6 +303,30 @@ class BuildTaskTestCase(unittest.TestCase):
                                'parallel task /b has Python steps',
                                sub_task.add_python, int, ())
 
+    def test_add_create_dir(self):
+        """Test add_create_dir."""
+        top_task = BuildTask(self.relcfg, None, '', False)
+        top_task.add_create_dir('/some/where')
+        top_task.add_create_dir('/some/other')
+
+    def test_add_create_dir_errors(self):
+        """Test errors from add_create_dir."""
+        top_task = BuildTask(self.relcfg, None, '', False)
+        top_task.finalize()
+        self.assertRaisesRegex(ScriptError,
+                               'add_create_dir called after finalization',
+                               top_task.add_create_dir, '/testdir')
+        top_task = BuildTask(self.relcfg, None, '', False)
+        sub_task = BuildTask(self.relcfg, top_task, 'b', True)
+        sub2_task = BuildTask(self.relcfg, top_task, 'c', False)
+        BuildTask(self.relcfg, sub2_task, 'd', False)
+        self.assertRaisesRegex(ScriptError,
+                               'task /c has both commands and subtasks',
+                               sub2_task.add_create_dir, '/testdir')
+        self.assertRaisesRegex(ScriptError,
+                               'parallel task /b has commands',
+                               sub_task.add_create_dir, '/testdir')
+
     def test_add_empty_dir(self):
         """Test add_empty_dir."""
         top_task = BuildTask(self.relcfg, None, '', False)
@@ -1081,6 +1105,7 @@ class BuildTaskTestCase(unittest.TestCase):
         sub2_task.add_make(['test', 'arg'], '/make/where')
         sub2_task.add_empty_dir('/empty/dir')
         sub2_task.add_empty_dir_parent('/empty/parent/dir')
+        sub2_task.add_create_dir('/other/dir')
         sub3_task = BuildTask(self.relcfg, top_task, 'c', False)
         sub3_task.add_python(int, ())
         sub3_task.depend('/b')
@@ -1108,7 +1133,8 @@ class BuildTaskTestCase(unittest.TestCase):
         self.assertIn('mkdir -p /empty/dir', cmds_b[4])
         self.assertIn('rm -rf /empty/parent/dir', cmds_b[5])
         self.assertIn('mkdir -p /empty/parent', cmds_b[6])
-        self.assertIn('end-task', cmds_b[7])
+        self.assertIn('mkdir -p /other/dir', cmds_b[7])
+        self.assertIn('end-task', cmds_b[8])
         self.assertIn('start-task', cmds_c[0])
         self.assertIn('rpc-client', cmds_c[1])
         self.assertIn('end-task', cmds_c[2])

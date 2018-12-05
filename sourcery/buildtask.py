@@ -289,11 +289,21 @@ class BuildTask:
                                % self._fullname)
         self._commands.append(BuildPython(self.context, py_func, py_args))
 
+    def add_create_dir(self, directory):
+        """Add commands to this task to create a directory.
+
+        The directory may already be present; if so, it is not
+        removed.
+
+        """
+        self._require_not_finalized('add_create_dir')
+        self.add_command(['mkdir', '-p', directory])
+
     def add_empty_dir(self, directory):
         """Add commands to this task to remove and recreate a directory."""
         self._require_not_finalized('add_empty_dir')
         self.add_command(['rm', '-rf', directory])
-        self.add_command(['mkdir', '-p', directory])
+        self.add_create_dir(directory)
 
     def add_empty_dir_parent(self, directory):
         """Add commands to this task to remove a directory and create its
@@ -302,7 +312,7 @@ class BuildTask:
         """
         self._require_not_finalized('add_empty_dir_parent')
         self.add_command(['rm', '-rf', directory])
-        self.add_command(['mkdir', '-p', os.path.dirname(directory)])
+        self.add_create_dir(os.path.dirname(directory))
 
     def add_make(self, command, cwd):
         """Add a 'make' command to this task."""

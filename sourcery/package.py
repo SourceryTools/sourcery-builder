@@ -18,10 +18,13 @@
 
 """Support building source and binary packages."""
 
+import collections
+import hashlib
 import os
+import os.path
 import stat
 
-__all__ = ['fix_perms']
+__all__ = ['fix_perms', 'hard_link_files']
 
 
 _NOEX_PERM = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
@@ -46,3 +49,44 @@ def fix_perms(path):
             mode = direntry.stat(follow_symlinks=False).st_mode
             os.chmod(direntry.path,
                      _EX_PERM if mode & stat.S_IXUSR else _NOEX_PERM)
+
+
+def hard_link_files(context, path):
+    """Convert files with identical contents and permissions to hard links.
+
+    This is useful in various cases.  Files that were originally hard
+    linked by individual components' 'make install' cease to be hard
+    linked when install tree processing copies the results of 'make
+    install'.  Some files installed separately for each multilib are
+    in fact identical and so should be hard linked to save space in
+    the final packages.
+
+    It is expected, but not required, that permissions have previously
+    been put in a canonical form by fix_perms.  Directories in which
+    files to be made into hard links are present must be writable.
+
+    """
+    file_hashes = collections.defaultdict(list)
+    for dirpath, dummy_dirnames, filenames in os.walk(path):
+        for name in filenames:
+            full = os.path.join(dirpath, name)
+            mode = os.stat(full, follow_symlinks=False).st_mode
+            if stat.S_ISREG(mode):
+                with open(full, 'rb') as file:
+                    digest = hashlib.sha256(file.read()).digest()
+                file_hashes[(digest, mode)].append(full)
+    # Sorted to ensure it is deterministic whether errors occur and
+    # what errors occur first.
+    for files in sorted(file_hashes.values()):
+        if len(files) > 1:
+            files.sort()
+            first = files[0]
+            with open(first, 'rb') as file:
+                first_contents = file.read()
+            for name in files[1:]:
+                with open(name, 'rb') as file:
+                    if file.read() != first_contents:
+                        context.error('hash collision: %s and %s'
+                                      % (first, name))
+                os.remove(name)
+                os.link(first, name)

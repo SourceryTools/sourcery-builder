@@ -24,7 +24,8 @@ import stat
 import tempfile
 import unittest
 
-from sourcery.package import fix_perms
+from sourcery.context import ScriptContext
+from sourcery.package import fix_perms, hard_link_files
 from sourcery.selftests.support import create_files, read_files
 
 __all__ = ['PackageTestCase']
@@ -36,6 +37,7 @@ class PackageTestCase(unittest.TestCase):
 
     def setUp(self):
         """Set up a sourcery.package test."""
+        self.context = ScriptContext()
         self.tempdir_td = tempfile.TemporaryDirectory()
         self.tempdir = self.tempdir_td.name
         self.indir = os.path.join(self.tempdir, 'in')
@@ -72,3 +74,42 @@ class PackageTestCase(unittest.TestCase):
         self.assertEqual(mode, mode_ex)
         mode = stat.S_IMODE(os.stat(os.path.join(self.indir, 'b/c/y')).st_mode)
         self.assertEqual(mode, mode_noex)
+
+    def test_hard_link_files(self):
+        """Test the hard_link_files function."""
+        create_files(self.indir, ['a', 'b', 'b/c'],
+                     {'a1': 'a', 'a2': 'a', 'b/c/a3': 'a', 'b/a4': 'a',
+                      'b1': 'b', 'b/b2': 'b', 'c': 'c'},
+                     {'a-link': 'a1', 'dead-link': 'bad'})
+        os.chmod(os.path.join(self.indir, 'a1'), stat.S_IRWXU)
+        os.chmod(os.path.join(self.indir, 'b/c/a3'), stat.S_IRWXU)
+        os.chmod(os.path.join(self.indir, 'a2'), stat.S_IRUSR)
+        os.chmod(os.path.join(self.indir, 'b/a4'), stat.S_IRUSR)
+        hard_link_files(self.context, self.indir)
+        self.assertEqual(read_files(self.indir),
+                         ({'a', 'b', 'b/c'},
+                          {'a1': 'a', 'a2': 'a', 'b/c/a3': 'a', 'b/a4': 'a',
+                           'b1': 'b', 'b/b2': 'b', 'c': 'c'},
+                          {'a-link': 'a1', 'dead-link': 'bad'}))
+        stat_a1 = os.stat(os.path.join(self.indir, 'a1'))
+        self.assertEqual(stat.S_IMODE(stat_a1.st_mode), stat.S_IRWXU)
+        stat_a3 = os.stat(os.path.join(self.indir, 'b/c/a3'))
+        self.assertEqual(stat.S_IMODE(stat_a3.st_mode), stat.S_IRWXU)
+        stat_a2 = os.stat(os.path.join(self.indir, 'a2'))
+        self.assertEqual(stat.S_IMODE(stat_a2.st_mode), stat.S_IRUSR)
+        stat_a4 = os.stat(os.path.join(self.indir, 'b/a4'))
+        self.assertEqual(stat.S_IMODE(stat_a4.st_mode), stat.S_IRUSR)
+        self.assertEqual(stat_a1.st_nlink, 2)
+        self.assertEqual(stat_a2.st_nlink, 2)
+        self.assertEqual(stat_a3.st_nlink, 2)
+        self.assertEqual(stat_a4.st_nlink, 2)
+        self.assertEqual(stat_a1.st_dev, stat_a3.st_dev)
+        self.assertEqual(stat_a1.st_ino, stat_a3.st_ino)
+        self.assertEqual(stat_a2.st_dev, stat_a4.st_dev)
+        self.assertEqual(stat_a2.st_ino, stat_a4.st_ino)
+        stat_b1 = os.stat(os.path.join(self.indir, 'b1'))
+        stat_b2 = os.stat(os.path.join(self.indir, 'b/b2'))
+        self.assertEqual(stat_b1.st_nlink, 2)
+        self.assertEqual(stat_b2.st_nlink, 2)
+        self.assertEqual(stat_b1.st_dev, stat_b2.st_dev)
+        self.assertEqual(stat_b1.st_ino, stat_b2.st_ino)

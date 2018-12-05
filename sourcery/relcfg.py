@@ -21,6 +21,7 @@
 import collections.abc
 import functools
 import os.path
+import time
 
 import sourcery.buildcfg
 from sourcery.fstree import FSTreeCopy
@@ -428,6 +429,15 @@ class ConfigVarGroup:
                      may also be set here.  Environment variables required only
                      by some build tasks may be set by build code at the level
                      of those build tasks.""")
+        self.add_var('source_date_epoch',
+                     ConfigVarType(self.context, int),
+                     int(time.time()),
+                     """The time, in seconds since the Epoch, to use for
+                     timestamps in the generated packages.
+
+                     This is used to generate a SOURCE_DATE_EPOCH setting in
+                     env_set, as well to control timestamps set from Python
+                     code.""")
         for component in self.context.components:
             group = self.add_group(component, None)
             group.add_var('configure_opts',
@@ -613,6 +623,8 @@ class ReleaseConfig:
         self._vg.add_release_config_vars()
         self._components = {'package'}
         loader.load_config(self, release_config)
+        self.env_set.get()['SOURCE_DATE_EPOCH'] = str(
+            self.source_date_epoch.get())
         build_orig = self.build.get()
         if not isinstance(build_orig, PkgHost):
             self.build.set_implicit(PkgHost(context, build_orig))

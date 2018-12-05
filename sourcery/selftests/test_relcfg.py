@@ -23,6 +23,7 @@ import collections
 import os
 import os.path
 import tempfile
+import time
 import unittest
 
 from sourcery.buildcfg import BuildCfg
@@ -531,12 +532,14 @@ class ConfigVarGroupTestCase(unittest.TestCase):
     def test_add_release_config_vars(self):
         """Test ConfigVarGroup.add_release_config_vars."""
         group = ConfigVarGroup(self.context, '')
+        time_before = int(time.time())
         group.add_release_config_vars()
+        time_after = int(time.time())
         # Test the list of release config variables.
         self.assertEqual(group.list_vars(),
                          ['build', 'env_set', 'hosts', 'installdir', 'interp',
                           'pkg_build', 'pkg_prefix', 'pkg_version',
-                          'script_full', 'target'])
+                          'script_full', 'source_date_epoch', 'target'])
         # Test each variable's default value and type constraints.
         self.assertIsNone(group.build.get())
         self.assertRaisesRegex(ScriptError,
@@ -602,6 +605,13 @@ class ConfigVarGroupTestCase(unittest.TestCase):
                                'script_full',
                                group.script_full.set, 12345)
         group.script_full.set('/some/where/sourcery-builder')
+        self.assertGreaterEqual(group.source_date_epoch.get(), time_before)
+        self.assertLessEqual(group.source_date_epoch.get(), time_after)
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'source_date_epoch',
+                               group.source_date_epoch.set, '1234567890')
+        group.source_date_epoch.set(1234567890)
         self.assertIsNone(group.target.get())
         self.assertRaisesRegex(ScriptError,
                                'bad type for value of release config variable '
@@ -822,6 +832,9 @@ class ReleaseConfigTestCase(unittest.TestCase):
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         self.assertIs(relcfg.args, self.args)
         self.assertIs(relcfg.context, self.context)
+        # Verify SOURCE_DATE_EPOCH in env_set.
+        self.assertEqual(relcfg.env_set.get()['SOURCE_DATE_EPOCH'],
+                         str(relcfg.source_date_epoch.get()))
         # Verify build and hosts settings.
         self.assertIsInstance(relcfg.build.get(), PkgHost)
         self.assertEqual(relcfg.build.get().name, 'x86_64-linux-gnu')
@@ -918,7 +931,8 @@ class ReleaseConfigTestCase(unittest.TestCase):
                           'interp', 'pkg_build', 'pkg_name_full',
                           'pkg_name_no_target', 'pkg_name_no_version',
                           'pkg_prefix', 'pkg_version', 'script_full',
-                          'sysroot', 'sysroot_rel', 'target', 'version'])
+                          'source_date_epoch', 'sysroot', 'sysroot_rel',
+                          'target', 'version'])
 
     def test_add_component(self):
         """Test ReleaseConfig.add_component."""

@@ -732,7 +732,10 @@ class ContextTestCase(unittest.TestCase):
                           'USER': 'test-user',
                           'LANG': 'C',
                           'LC_ALL': 'C',
-                          'PATH': 'test-path'})
+                          'PATH': 'test-path',
+                          'SOURCE_DATE_EPOCH': str(
+                              context.called_with_relcfg.source_date_epoch.get(
+                              ))})
         self.assertEqual(context.script_full, context.orig_script_full)
         self.assertEqual(context.interp, sys.executable)
         # Test release config setting environment variables.
@@ -760,7 +763,10 @@ class ContextTestCase(unittest.TestCase):
                           'LANG': 'C',
                           'LC_ALL': 'C',
                           'PATH': 'test-path',
-                          'OTHER': 'rc-other'})
+                          'OTHER': 'rc-other',
+                          'SOURCE_DATE_EPOCH': str(
+                              context.called_with_relcfg.source_date_epoch.get(
+                              ))})
         self.assertEqual(context.script_full, context.orig_script_full)
         self.assertEqual(context.interp, sys.executable)
         # Test release config forcing re-exec by setting script_full.
@@ -791,7 +797,10 @@ class ContextTestCase(unittest.TestCase):
                           'USER': 'test-user',
                           'LANG': 'C',
                           'LC_ALL': 'C',
-                          'PATH': 'test-path'})
+                          'PATH': 'test-path',
+                          'SOURCE_DATE_EPOCH': str(
+                              context.called_with_relcfg.source_date_epoch.get(
+                              ))})
         self.assertEqual(context.script_full,
                          '%s-other' % context.orig_script_full)
         self.assertEqual(context.interp, sys.executable)
@@ -824,6 +833,9 @@ class ContextTestCase(unittest.TestCase):
                           'USER': 'test-user',
                           'LANG': 'C',
                           'LC_ALL': 'C',
-                          'PATH': 'test-path'})
+                          'PATH': 'test-path',
+                          'SOURCE_DATE_EPOCH': str(
+                              context.called_with_relcfg.source_date_epoch.get(
+                              ))})
         self.assertEqual(context.script_full, context.orig_script_full)
         self.assertEqual(context.interp, '%s-other' % sys.executable)

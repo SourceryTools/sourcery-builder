@@ -18,7 +18,11 @@
 
 """sourcery-builder package component."""
 
+import os.path
+
+from sourcery.buildtask import BuildTask
 import sourcery.component
+from sourcery.package import fix_perms, hard_link_files, tar_command
 
 __all__ = ['Component']
 
@@ -47,3 +51,24 @@ class Component(sourcery.component.Component):
         # components; only a few manipulations are most appropriately
         # done globally just before packaging.
         host_group.declare_implicit_install(host, 'package-input')
+        task = BuildTask(cfg, host_group, 'package')
+        task.depend_install(host, 'package-input')
+        inst_in_path = cfg.install_tree_path(host, 'package-input')
+        inst_out_path = cfg.install_tree_path(host, 'package-output')
+        task.add_empty_dir_parent(inst_out_path)
+        task.add_command(['cp', '-a', inst_in_path, inst_out_path])
+        # The top-level directory in a package corresponds to the
+        # contents of installdir.  In degenerate cases of nothing in a
+        # package, installdir may not have been created (although the
+        # package-input tree will always have been created, even if
+        # empty).
+        inst_out_main = os.path.join(inst_out_path, cfg.installdir_rel.get())
+        task.add_create_dir(inst_out_main)
+        task.add_python(fix_perms, (inst_out_main,))
+        task.add_python(hard_link_files, (cfg.context, inst_out_main))
+        task.add_create_dir(cfg.args.pkgdir)
+        pkg_path = cfg.pkgdir_path(host, '.tar.xz')
+        task.add_command(tar_command(pkg_path,
+                                     cfg.pkg_name_no_target_build.get(),
+                                     cfg.source_date_epoch.get()),
+                         cwd=inst_out_main)

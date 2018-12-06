@@ -23,7 +23,9 @@ import contextlib
 import io
 import os
 import os.path
+import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -313,19 +315,32 @@ class BuildContextTestCase(unittest.TestCase):
                           {}))
         self.assertEqual(stdout, '')
         lines = stderr.splitlines()
-        self.assertEqual(len(lines), 12)
+        self.assertEqual(len(lines), 16)
         for line in lines:
             self.assertRegex(line,
                              r'^\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] '
-                             r'\[000[1-6]/0006\] /.*(start|end)\Z')
-        self.assertIn('[0001/0006]', stderr)
-        self.assertIn('[0006/0006]', stderr)
+                             r'\[000[1-8]/0008\] /.*(start|end)\Z')
+        self.assertIn('[0001/0008]', stderr)
+        self.assertIn('[0008/0008]', stderr)
         self.assertIn('/x86_64-linux-gnu/all-hosts start', stderr)
         self.assertIn('/x86_64-w64-mingw32/other-hosts end', stderr)
         self.assertIn('/install-trees-x86_64-linux-gnu/package-input start',
                       stderr)
         self.assertIn('/install-trees-x86_64-w64-mingw32/package-input end',
                       stderr)
+        self.assertIn('/x86_64-linux-gnu/package start', stderr)
+        self.assertIn('/x86_64-w64-mingw32/package end', stderr)
+        # In this case, the created packages are empty.
+        pkg_0 = self.relcfg.pkgdir_path(hosts[0], '.tar.xz')
+        pkg_1 = self.relcfg.pkgdir_path(hosts[1], '.tar.xz')
+        dir_out = os.path.join(self.tempdir, 'toolchain-1.0')
+        subprocess.run(['tar', '-x', '-f', pkg_0], cwd=self.tempdir)
+        self.assertEqual(read_files(dir_out),
+                         (set(), {}, {}))
+        shutil.rmtree(dir_out)
+        subprocess.run(['tar', '-x', '-f', pkg_1], cwd=self.tempdir)
+        self.assertEqual(read_files(dir_out),
+                         (set(), {}, {}))
 
     def test_run_build_silent(self):
         """Test run_build, simple successful build, silent."""
@@ -440,3 +455,31 @@ class BuildContextTestCase(unittest.TestCase):
                          (set(),
                           {'b': 'b\n', 'c': 'c\n'},
                           {}))
+
+    def test_run_build_package(self):
+        """Test run_build, nonempty packages built."""
+        self.setup_rc('cfg.add_component("build_package")\n'
+                      'cfg.source_date_epoch.set(1111199990)\n')
+        with self.redirect_stdout_stderr():
+            self.build_context.run_build()
+        hosts = self.relcfg.hosts.get()
+        pkg_0 = self.relcfg.pkgdir_path(hosts[0], '.tar.xz')
+        pkg_1 = self.relcfg.pkgdir_path(hosts[1], '.tar.xz')
+        dir_out = os.path.join(self.tempdir, 'toolchain-1.0')
+        subprocess.run(['tar', '-x', '-f', pkg_0], cwd=self.tempdir)
+        self.assertEqual(read_files(dir_out),
+                         (set(),
+                          {'a1': 'a\n', 'a2': 'a\n', 'a3': 'a\n', 'b': 'b\n'},
+                          {'c': 'b'}))
+        stat_a1 = os.stat(os.path.join(dir_out, 'a1'))
+        self.assertEqual(stat_a1.st_nlink, 3)
+        self.assertEqual(stat_a1.st_mtime, 1111199990)
+        shutil.rmtree(dir_out)
+        subprocess.run(['tar', '-x', '-f', pkg_1], cwd=self.tempdir)
+        self.assertEqual(read_files(dir_out),
+                         (set(),
+                          {'a1': 'a\n', 'a2': 'a\n', 'a3': 'a\n', 'b': 'b\n'},
+                          {'c': 'b'}))
+        stat_a1 = os.stat(os.path.join(dir_out, 'a1'))
+        self.assertEqual(stat_a1.st_nlink, 3)
+        self.assertEqual(stat_a1.st_mtime, 1111199990)

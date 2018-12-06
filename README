@@ -16,8 +16,13 @@ prototype purposes.  Some key missing pieces are:
 * Various pieces needed for isolation from the environment and robust,
   reproducible builds.
 
-* Producing source or binary packages (rather than just install trees
-  for the various parts of the toolchain built).
+* Producing source packages.
+
+* Various features for binary packages, including replacing symlinks
+  by hard links for Windows host, stripping packaged host binaries,
+  separate debug info for packaged target binaries, and copying
+  sources for target binaries into the binary packages for use in a
+  debugger.
 
 * Running any toolchain testsuites.
 

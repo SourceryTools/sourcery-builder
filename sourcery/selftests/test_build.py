@@ -137,6 +137,12 @@ class BuildContextTestCase(unittest.TestCase):
         self.assertNotIn('task-end/x86_64-w64-mingw32/first-host', deps)
         self.assertNotIn('task-end/x86_64-linux-gnu/other-hosts', deps)
         self.assertIn('task-end/x86_64-w64-mingw32/other-hosts', deps)
+        self.assertIn('task-end/init', deps['task-start/x86_64-linux-gnu'])
+        self.assertIn('task-end/init', deps['task-start/x86_64-w64-mingw32'])
+        self.assertIn('task-end/init', deps['task-start/host-indep'])
+        self.assertIn('task-end/x86_64-linux-gnu', deps['task-start/fini'])
+        self.assertIn('task-end/x86_64-w64-mingw32', deps['task-start/fini'])
+        self.assertIn('task-end/host-indep', deps['task-start/fini'])
         self.assertIn('rm -rf',
                       commands['task-end/x86_64-linux-gnu/all-hosts'][1])
 
@@ -313,15 +319,31 @@ class BuildContextTestCase(unittest.TestCase):
                          (set(),
                           {'out': 'test python\n'},
                           {}))
+        init_objdir = self.relcfg.objdir_path(None, 'build_test-init')
+        host_indep_objdir = self.relcfg.objdir_path(None,
+                                                    'build_test-host-indep')
+        fini_objdir = self.relcfg.objdir_path(None, 'build_test-fini')
+        self.assertEqual(read_files(init_objdir),
+                         (set(),
+                          {'out': 'init\n'},
+                          {}))
+        self.assertEqual(read_files(host_indep_objdir),
+                         (set(),
+                          {'out': 'host-indep\n'},
+                          {}))
+        self.assertEqual(read_files(fini_objdir),
+                         (set(),
+                          {'out': 'fini\n'},
+                          {}))
         self.assertEqual(stdout, '')
         lines = stderr.splitlines()
-        self.assertEqual(len(lines), 16)
+        self.assertEqual(len(lines), 22)
         for line in lines:
             self.assertRegex(line,
                              r'^\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] '
-                             r'\[000[1-8]/0008\] /.*(start|end)\Z')
-        self.assertIn('[0001/0008]', stderr)
-        self.assertIn('[0008/0008]', stderr)
+                             r'\[00[0-1][0-9]/0011\] /.*(start|end)\Z')
+        self.assertIn('[0001/0011]', stderr)
+        self.assertIn('[0011/0011]', stderr)
         self.assertIn('/x86_64-linux-gnu/all-hosts start', stderr)
         self.assertIn('/x86_64-w64-mingw32/other-hosts end', stderr)
         self.assertIn('/install-trees-x86_64-linux-gnu/package-input start',
@@ -330,6 +352,9 @@ class BuildContextTestCase(unittest.TestCase):
                       stderr)
         self.assertIn('/x86_64-linux-gnu/package start', stderr)
         self.assertIn('/x86_64-w64-mingw32/package end', stderr)
+        self.assertIn('/init/init start', stderr)
+        self.assertIn('/host-indep/host-indep start', stderr)
+        self.assertIn('/fini/fini end', stderr)
         # In this case, the created packages are empty.
         pkg_0 = self.relcfg.pkgdir_path(hosts[0], '.tar.xz')
         pkg_1 = self.relcfg.pkgdir_path(hosts[1], '.tar.xz')

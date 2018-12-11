@@ -93,6 +93,43 @@ class Component:
         """
 
     @staticmethod
+    def add_build_tasks_init(cfg, component, init_group):
+        """Add any initialization build tasks associated with this component.
+
+        Initialization tasks are host-independent and run before all
+        other tasks, without any dependencies needing to be specified
+        explicitly.  Such tasks should be added with 'init_group' (a
+        group containing tasks to be run in parallel) as their parent;
+        'cfg' is the release config.  'component' is the
+        ComponentInConfig object.
+
+        """
+
+    @staticmethod
+    def add_build_tasks_host_indep(cfg, component, host_indep_group):
+        """Add any host-independent build tasks associated with this component.
+
+        Such tasks should be added with 'host_indep_group' (a group
+        containing tasks to be run in parallel) as their parent; 'cfg'
+        is the release config.  'component' is the ComponentInConfig
+        object.
+
+        """
+
+    @staticmethod
+    def add_build_tasks_fini(cfg, component, fini_group):
+        """Add any finalization build tasks associated with this component.
+
+        Finalization tasks are host-independent and run after all
+        other tasks, without any dependencies needing to be specified
+        explicitly.  Such tasks should be added with 'fini_group' (a
+        group containing tasks to be run in parallel) as their parent;
+        'cfg' is the release config.  'component' is the
+        ComponentInConfig object.
+
+        """
+
+    @staticmethod
     def configure_opts(cfg, host):  # pylint: disable=unused-argument
         """Return component-specific configure options.
 

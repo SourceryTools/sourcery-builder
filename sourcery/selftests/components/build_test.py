@@ -79,3 +79,24 @@ class Component(sourcery.component.Component):
                 outfile.write('%s %s\n' % (arg1, arg2))
 
         task.add_python(py_test_fn, ('test', 'python'))
+
+    @staticmethod
+    def add_build_tasks_init(cfg, component, init_group):
+        task = BuildTask(cfg, init_group, 'init')
+        objdir = cfg.objdir_path(None, '%s-init' % component.copy_name)
+        task.add_empty_dir(objdir)
+        task.add_command(['sh', '-c', 'echo init > %s/out' % objdir])
+
+    @staticmethod
+    def add_build_tasks_host_indep(cfg, component, host_indep_group):
+        task = BuildTask(cfg, host_indep_group, 'host-indep')
+        objdir = cfg.objdir_path(None, '%s-host-indep' % component.copy_name)
+        task.add_empty_dir(objdir)
+        task.add_command(['sh', '-c', 'echo host-indep > %s/out' % objdir])
+
+    @staticmethod
+    def add_build_tasks_fini(cfg, component, fini_group):
+        task = BuildTask(cfg, fini_group, 'fini')
+        objdir = cfg.objdir_path(None, '%s-fini' % component.copy_name)
+        task.add_empty_dir(objdir)
+        task.add_command(['sh', '-c', 'echo fini > %s/out' % objdir])

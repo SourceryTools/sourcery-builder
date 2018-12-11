@@ -65,9 +65,21 @@ class BuildContext:
         """
         relcfg = self.relcfg
         top_task = BuildTask(relcfg, None, '', True)
+        init_task = BuildTask(relcfg, top_task, 'init', True)
+        host_indep_task = BuildTask(relcfg, top_task, 'host-indep', True)
+        fini_task = BuildTask(relcfg, top_task, 'fini', True)
+        host_indep_task.depend('/init')
+        fini_task.depend('/host-indep')
+        for component in relcfg.list_components():
+            component.cls.add_build_tasks_init(relcfg, component, init_task)
+            component.cls.add_build_tasks_host_indep(relcfg, component,
+                                                     host_indep_task)
+            component.cls.add_build_tasks_fini(relcfg, component, fini_task)
         first_host = True
         for host in relcfg.hosts.get():
             host_task = BuildTask(relcfg, top_task, host.name, True)
+            host_task.depend('/init')
+            fini_task.depend('/%s' % host.name)
             for component in relcfg.list_components():
                 component.cls.add_build_tasks_for_host(relcfg, host, component,
                                                        host_task)

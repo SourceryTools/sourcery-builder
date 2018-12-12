@@ -51,24 +51,35 @@ class Component(sourcery.component.Component):
         # components; only a few manipulations are most appropriately
         # done globally just before packaging.
         host_group.declare_implicit_install(host, 'package-input')
-        task = BuildTask(cfg, host_group, 'package')
-        task.depend_install(host, 'package-input')
+        pkg_out_task = BuildTask(cfg, host_group, 'package-output')
+        pkg_out_task.depend_install(host, 'package-input')
+        pkg_out_task.provide_install(host, 'package-output')
         inst_in_path = cfg.install_tree_path(host, 'package-input')
         inst_out_path = cfg.install_tree_path(host, 'package-output')
-        task.add_empty_dir_parent(inst_out_path)
-        task.add_command(['cp', '-a', inst_in_path, inst_out_path])
+        pkg_out_task.add_empty_dir_parent(inst_out_path)
+        pkg_out_task.add_command(['cp', '-a', inst_in_path, inst_out_path])
         # The top-level directory in a package corresponds to the
         # contents of installdir.  In degenerate cases of nothing in a
         # package, installdir may not have been created (although the
         # package-input tree will always have been created, even if
         # empty).
         inst_out_main = os.path.join(inst_out_path, cfg.installdir_rel.get())
-        task.add_create_dir(inst_out_main)
-        task.add_python(fix_perms, (inst_out_main,))
-        task.add_python(hard_link_files, (cfg.context, inst_out_main))
-        task.add_create_dir(cfg.args.pkgdir)
+        pkg_out_task.add_create_dir(inst_out_main)
+        pkg_out_task.add_python(fix_perms, (inst_out_main,))
+        pkg_out_task.add_python(hard_link_files, (cfg.context, inst_out_main))
+        # Creating the package-output install tree is separated from
+        # creating a .tar.xz package from it so that .tar.xz creation
+        # can run in parallel with other package format creation using
+        # the same tree.
+        pkg_task = BuildTask(cfg, host_group, 'package-tar-xz')
+        pkg_task.depend_install(host, 'package-output')
         pkg_path = cfg.pkgdir_path(host, '.tar.xz')
-        task.add_command(tar_command(pkg_path,
-                                     cfg.pkg_name_no_target_build.get(),
-                                     cfg.source_date_epoch.get()),
-                         cwd=inst_out_main)
+        pkg_task.add_command(tar_command(
+            pkg_path, cfg.pkg_name_no_target_build.get(),
+            cfg.source_date_epoch.get()),
+                                 cwd=inst_out_main)
+
+    @staticmethod
+    def add_build_tasks_init(cfg, component, init_group):
+        task = BuildTask(cfg, init_group, 'pkgdir')
+        task.add_create_dir(cfg.args.pkgdir)

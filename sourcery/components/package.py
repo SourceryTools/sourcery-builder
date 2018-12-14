@@ -81,5 +81,75 @@ class Component(sourcery.component.Component):
 
     @staticmethod
     def add_build_tasks_init(cfg, component, init_group):
-        task = BuildTask(cfg, init_group, 'pkgdir')
-        task.add_create_dir(cfg.args.pkgdir)
+        pkgdir_task = BuildTask(cfg, init_group, 'pkgdir')
+        pkgdir_task.add_create_dir(cfg.args.pkgdir)
+        if not cfg.args.build_source_packages:
+            return
+        # Component sources are copied in an init task to ensure that
+        # source packages contain the sources at the start of the
+        # build, even if a bug in a component's build process
+        # (e.g. missing or insufficient configuration of files to
+        # touch on checkout) results in the source directory being
+        # modified during the build.  If a component's build process
+        # is known to modify the source directory intentionally, that
+        # component's build tasks must create a separate copy for use
+        # in the build.
+        source_copy_group = BuildTask(cfg, init_group, 'source-copy', True)
+        objdir = cfg.objdir_path(None, 'source-copy')
+        for src_component in cfg.list_source_components():
+            name = src_component.copy_name
+            srcdir = src_component.vars.srcdir.get()
+            srcdir_copy = os.path.join(objdir, name)
+            copy_task = BuildTask(cfg, source_copy_group, name)
+            copy_task.add_empty_dir_parent(srcdir_copy)
+            copy_task.add_python(
+                src_component.vars.vc.get().copy_without_metadata,
+                (srcdir, srcdir_copy))
+
+    @staticmethod
+    def add_build_tasks_host_indep(cfg, component, host_indep_group):
+        if not cfg.args.build_source_packages:
+            return
+        # The source package has the sources of open source
+        # components; the backup package has the sources of closed
+        # source components.
+        source_group = BuildTask(cfg, host_indep_group, 'source-package')
+        source_objdir = cfg.objdir_path(None, 'source-package')
+        source_init_task = BuildTask(cfg, source_group, 'init')
+        source_init_task.add_empty_dir(source_objdir)
+        source_components_group = BuildTask(cfg, source_group, 'components',
+                                            True)
+        source_package_task = BuildTask(cfg, source_group, 'package')
+        source_pkg_path = cfg.pkgdir_path(None, '.src.tar.xz')
+        source_package_task.add_command(tar_command(
+            source_pkg_path, cfg.pkg_name_full.get(),
+            cfg.source_date_epoch.get()),
+                                        cwd=source_objdir)
+        backup_group = BuildTask(cfg, host_indep_group, 'backup-package')
+        backup_objdir = cfg.objdir_path(None, 'backup-package')
+        backup_init_task = BuildTask(cfg, backup_group, 'init')
+        backup_init_task.add_empty_dir(backup_objdir)
+        backup_components_group = BuildTask(cfg, backup_group, 'components',
+                                            True)
+        backup_package_task = BuildTask(cfg, backup_group, 'package')
+        backup_pkg_path = cfg.pkgdir_path(None, '.backup.tar.xz')
+        backup_package_task.add_command(tar_command(
+            backup_pkg_path, '%s.backup' % cfg.pkg_name_full.get(),
+            cfg.source_date_epoch.get()),
+                                        cwd=backup_objdir)
+        copy_objdir = cfg.objdir_path(None, 'source-copy')
+        for src_component in cfg.list_source_components():
+            name = src_component.copy_name
+            srcdir_copy = os.path.join(copy_objdir, name)
+            if src_component.vars.source_type.get() == 'open':
+                group = source_components_group
+                objdir = source_objdir
+            else:
+                group = backup_components_group
+                objdir = backup_objdir
+            task = BuildTask(cfg, group, name)
+            pkg_dir = '%s-%s' % (name, cfg.version.get())
+            pkg_path = os.path.join(objdir, '%s.tar.xz' % pkg_dir)
+            task.add_command(tar_command(pkg_path, pkg_dir,
+                                         cfg.source_date_epoch.get()),
+                             cwd=srcdir_copy)

@@ -1,4 +1,4 @@
-# sourcery-builder release command.
+# sourcery-builder build_src_open component for testing.
 
 # Copyright 2018 Mentor Graphics Corporation.
 
@@ -16,30 +16,16 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""sourcery-builder release command."""
+"""sourcery-builder build_src_open component for testing."""
 
-import os
+import sourcery.component
 
-from sourcery.build import BuildContext
-import sourcery.command
-from sourcery.relcfg import add_release_config_arg
-
-__all__ = ['Command']
+__all__ = ['Component']
 
 
-class Command(sourcery.command.Command):
-    """sourcery-builder release implementation."""
-
-    short_desc = 'Build a release of a config.'
-
-    check_script = True
+class Component(sourcery.component.Component):
+    """build_src_open component implementation."""
 
     @staticmethod
-    def add_arguments(parser):
-        add_release_config_arg(parser)
-
-    @staticmethod
-    def main(context, relcfg, args):
-        args.parallelism = os.cpu_count()
-        args.build_source_packages = True
-        BuildContext(context, relcfg, args).run_build()
+    def add_release_config_vars(group):
+        group.source_type.set_implicit('open')

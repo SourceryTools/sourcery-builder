@@ -36,8 +36,8 @@ from sourcery.context import add_common_options, add_parallelism_option, \
     ScriptContext, ScriptError
 from sourcery.relcfg import ReleaseConfig, ReleaseConfigTextLoader
 from sourcery.rpc import RPCServer
-from sourcery.selftests.support import read_files, redirect_file, \
-    parse_makefile
+from sourcery.selftests.support import create_files, read_files, \
+    redirect_file, parse_makefile
 
 __all__ = ['BuildContextTestCase']
 
@@ -55,6 +55,7 @@ class BuildContextTestCase(unittest.TestCase):
         add_common_options(parser, self.tempdir)
         add_parallelism_option(parser)
         self.args = parser.parse_args([])
+        self.args.build_source_packages = False
         self.relcfg = None
         self.build_context = None
 
@@ -508,3 +509,50 @@ class BuildContextTestCase(unittest.TestCase):
         stat_a1 = os.stat(os.path.join(dir_out, 'a1'))
         self.assertEqual(stat_a1.st_nlink, 3)
         self.assertEqual(stat_a1.st_mtime, 1111199990)
+
+    def test_run_build_src_package(self):
+        """Test run_build, source and backup packages built."""
+        self.args.build_source_packages = True
+        # We need to create dummy source trees, but they do not
+        # actually need to come from checking out the given version
+        # control locations.
+        srcdir = os.path.join(self.tempdir, 'src')
+        create_files(srcdir, ['build_src_open-123', 'build_src_closed-456'],
+                     {'build_src_open-123/x': 'x',
+                      'build_src_closed-456/y': 'y',
+                      'build_src_closed-456/.git': 'ignore'},
+                     {})
+        self.setup_rc('cfg.add_component("build_src_open")\n'
+                      'cfg.build_src_open.version.set("123")\n'
+                      'cfg.build_src_open.vc.set(TarVC("/dummy"))\n'
+                      'cfg.add_component("build_src_closed")\n'
+                      'cfg.build_src_closed.version.set("456")\n'
+                      'cfg.build_src_closed.vc.set(GitVC("/dummy"))\n'
+                      'cfg.source_date_epoch.set(1111199990)\n')
+        with self.redirect_stdout_stderr():
+            self.build_context.run_build()
+        pkg_src = self.relcfg.pkgdir_path(None, '.src.tar.xz')
+        pkg_backup = self.relcfg.pkgdir_path(None, '.backup.tar.xz')
+        dir_src = os.path.join(self.tempdir,
+                               'toolchain-1.0-1-aarch64-linux-gnu')
+        dir_backup = os.path.join(self.tempdir,
+                                  'toolchain-1.0-1-aarch64-linux-gnu.backup')
+        subprocess.run(['tar', '-x', '-f', pkg_src], cwd=self.tempdir)
+        self.assertEqual(os.listdir(dir_src), ['build_src_open-1.0-1.tar.xz'])
+        subprocess.run(['tar', '-x', '-f', pkg_backup], cwd=self.tempdir)
+        self.assertEqual(os.listdir(dir_backup),
+                         ['build_src_closed-1.0-1.tar.xz'])
+        tar_open = os.path.join(dir_src, 'build_src_open-1.0-1.tar.xz')
+        tar_closed = os.path.join(dir_backup, 'build_src_closed-1.0-1.tar.xz')
+        self.assertEqual(os.stat(tar_open).st_mtime, 1111199990)
+        self.assertEqual(os.stat(tar_closed).st_mtime, 1111199990)
+        subprocess.run(['tar', '-x', '-f', tar_open], cwd=self.tempdir)
+        subprocess.run(['tar', '-x', '-f', tar_closed], cwd=self.tempdir)
+        dir_open = os.path.join(self.tempdir, 'build_src_open-1.0-1')
+        dir_closed = os.path.join(self.tempdir, 'build_src_closed-1.0-1')
+        self.assertEqual(read_files(dir_open), (set(), {'x': 'x'}, {}))
+        self.assertEqual(read_files(dir_closed), (set(), {'y': 'y'}, {}))
+        self.assertEqual(os.stat(os.path.join(dir_open, 'x')).st_mtime,
+                         1111199990)
+        self.assertEqual(os.stat(os.path.join(dir_closed, 'y')).st_mtime,
+                         1111199990)

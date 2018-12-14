@@ -20,6 +20,6 @@
 
 __all__ = ['add_rel_cfg_vars', 'build_fail_cd', 'build_fail_command',
            'build_fail_python', 'build_install_tree', 'build_log',
-           'build_package', 'build_test', 'configure_opts', 'files_to_touch',
-           'files_to_touch_glob', 'generic', 'no_add_rel_cfg_vars',
-           'postcheckout', 'zz_no_source']
+           'build_package', 'build_src_closed', 'build_src_open', 'build_test',
+           'configure_opts', 'files_to_touch', 'files_to_touch_glob',
+           'generic', 'no_add_rel_cfg_vars', 'postcheckout', 'zz_no_source']

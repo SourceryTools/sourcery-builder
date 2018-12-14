@@ -16,7 +16,9 @@ prototype purposes.  Some key missing pieces are:
 * Various pieces needed for isolation from the environment and robust,
   reproducible builds.
 
-* Producing source packages.
+* Ensuring source packages contain release configs used even if the
+  release configs are not part of a component or are part of a
+  closed-source component.
 
 * Various features for binary packages, including replacing symlinks
   by hard links for Windows host, stripping packaged host binaries,

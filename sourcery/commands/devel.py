@@ -38,4 +38,5 @@ class Command(sourcery.command.Command):
 
     @staticmethod
     def main(context, relcfg, args):
+        args.build_source_packages = False
         BuildContext(context, relcfg, args).run_build()

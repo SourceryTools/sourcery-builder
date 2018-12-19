@@ -166,6 +166,7 @@ class ContextTestCase(unittest.TestCase):
         self.assertIs(self.context.execve, os.execve)
         self.assertIs(self.context.setlocale, locale.setlocale)
         self.assertIs(self.context.umask, os.umask)
+        self.assertEqual(self.context.package_list, ('sourcery',))
         self.assertIn('self-test', self.context.commands)
         import sourcery.commands.self_test
         self.assertIs(self.context.commands['self-test'],
@@ -176,6 +177,8 @@ class ContextTestCase(unittest.TestCase):
                       sourcery.components.gcc.Component)
         # Test loading extra commands and components.
         test_context = ScriptContext(['sourcery.selftests'])
+        self.assertEqual(test_context.package_list,
+                         ('sourcery', 'sourcery.selftests'))
         self.assertIn('self-test', test_context.commands)
         self.assertIs(test_context.commands['self-test'],
                       sourcery.commands.self_test.Command)

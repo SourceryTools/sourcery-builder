@@ -147,16 +147,19 @@ class ScriptContext:
         load_list = ['sourcery']
         if extra is not None:
             load_list.extend(extra)
-        self._load_commands(load_list)
-        self._load_components(load_list)
+        # The list of packages from which Sourcery Builder modules,
+        # and those extending it, are loaded.
+        self.package_list = tuple(load_list)
+        self._load_commands()
+        self._load_components()
         # Set by tests only, otherwise unused.
         self.called_with_args = None
         self.called_with_relcfg = None
 
-    def _load_commands(self, package_list):
+    def _load_commands(self):
         """Load the modules for all sourcery-builder commands."""
         self.commands = {}
-        for pkg in package_list:
+        for pkg in self.package_list:
             pkg_str = pkg + '.commands'
             pkg_mod = importlib.import_module(pkg_str)
             for cmd in pkg_mod.__all__:
@@ -166,10 +169,10 @@ class ScriptContext:
                     self.error('duplicate command %s' % cmd_name)
                 self.commands[cmd_name] = mod.Command
 
-    def _load_components(self, package_list):
+    def _load_components(self):
         """Load the modules for all sourcery-builder components."""
         self.components = {}
-        for pkg in package_list:
+        for pkg in self.package_list:
             pkg_str = pkg + '.components'
             pkg_mod = importlib.import_module(pkg_str)
             for component in pkg_mod.__all__:

@@ -18,6 +18,7 @@
 
 """sourcery-builder self-test command."""
 
+import importlib
 import unittest
 
 import sourcery.command
@@ -36,6 +37,14 @@ class Command(sourcery.command.Command):
 
     @staticmethod
     def main(context, relcfg, args):
-        suite = unittest.defaultTestLoader.discover(
-            'sourcery.selftests', top_level_dir=context.sourcery_builder_dir)
-        unittest.TextTestRunner(verbosity=2).run(suite)
+        top_suite = unittest.TestSuite()
+        for pkg in context.package_list:
+            pkg_str = pkg + '.selftests'
+            pkg_str_init = pkg_str + '.__init__'
+            pkg_mod = importlib.import_module(pkg_str_init)
+            pkg_len = len(pkg_str_init.split('.'))
+            pkg_path = pkg_mod.__file__.rsplit('/', pkg_len)[0]
+            suite = unittest.defaultTestLoader.discover(
+                pkg_str, top_level_dir=pkg_path)
+            top_suite.addTest(suite)
+        unittest.TextTestRunner(verbosity=2).run(top_suite)

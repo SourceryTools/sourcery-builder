@@ -290,7 +290,7 @@ class ScriptContext:
             extra_vars = {}
         # Environment variables that are safe to keep and may be
         # required by subprocesses.
-        env_vars_keep = {'HOME', 'LOGNAME', 'TERM', 'USER'}
+        env_vars_keep = {'HOME', 'LOGNAME', 'SSH_AUTH_SOCK', 'TERM', 'USER'}
         # Environment variables kept initially, but possibly replaced
         # after a release config is loaded.
         env_vars_replace_relcfg = {'PATH', 'LD_LIBRARY_PATH'}

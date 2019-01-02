@@ -1,6 +1,6 @@
-# Initialize sourcery.components package.
+# sourcery-builder sourcery_builder component.
 
-# Copyright 2018-2019 Mentor Graphics Corporation.
+# Copyright 2019 Mentor Graphics Corporation.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as
@@ -16,7 +16,17 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder components package."""
+"""sourcery-builder sourcery_builder component."""
 
-__all__ = ['binutils', 'gcc', 'glibc', 'gmp', 'linux', 'mpc', 'mpfr',
-           'package', 'release_configs', 'sourcery_builder', 'toolchain']
+import sourcery.component
+
+__all__ = ['Component']
+
+
+class Component(sourcery.component.Component):
+    """sourcery-builder sourcery_builder component implementation."""
+
+    @staticmethod
+    def add_release_config_vars(group):
+        group.source_type.set_implicit('open')
+        group.srcdirname.set_implicit('sourcery-builder')

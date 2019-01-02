@@ -137,6 +137,34 @@ class VCTestCase(unittest.TestCase):
         self.assertRaises(subprocess.CalledProcessError, vc_obj.vc_checkout,
                           self.srcdir, False)
 
+    def test_git_eq(self):
+        """Test GitVC.__eq__."""
+        vc_obj1 = GitVC(self.context, '/example')
+        vc_obj2 = GitVC(self.context, '/example', 'master')
+        vc_obj3 = GitVC(self.context, '/example', 'other')
+        vc_obj4 = GitVC(self.context, '/other')
+        vc_obj5 = SvnVC(self.context, '/example')
+        self.assertEqual(vc_obj1, vc_obj1)
+        self.assertEqual(vc_obj1, vc_obj2)
+        self.assertNotEqual(vc_obj1, vc_obj3)
+        self.assertNotEqual(vc_obj1, vc_obj4)
+        self.assertNotEqual(vc_obj1, vc_obj5)
+        self.assertEqual(vc_obj2, vc_obj1)
+        self.assertEqual(vc_obj2, vc_obj2)
+        self.assertNotEqual(vc_obj2, vc_obj3)
+        self.assertNotEqual(vc_obj2, vc_obj4)
+        self.assertNotEqual(vc_obj2, vc_obj5)
+        self.assertNotEqual(vc_obj3, vc_obj1)
+        self.assertNotEqual(vc_obj3, vc_obj2)
+        self.assertEqual(vc_obj3, vc_obj3)
+        self.assertNotEqual(vc_obj3, vc_obj4)
+        self.assertNotEqual(vc_obj3, vc_obj5)
+        self.assertNotEqual(vc_obj4, vc_obj1)
+        self.assertNotEqual(vc_obj4, vc_obj2)
+        self.assertNotEqual(vc_obj4, vc_obj3)
+        self.assertEqual(vc_obj4, vc_obj4)
+        self.assertNotEqual(vc_obj4, vc_obj5)
+
     def test_git_repr(self):
         """Test GitVC.__repr__."""
         vc_obj = GitVC(self.context, '/example')
@@ -209,6 +237,18 @@ class VCTestCase(unittest.TestCase):
         shutil.rmtree(self.srcdir)
         self.assertRaises(subprocess.CalledProcessError, vc_obj.vc_checkout,
                           self.srcdir, False)
+
+    def test_svn_eq(self):
+        """Test SvnVC.__eq__."""
+        vc_obj1 = SvnVC(self.context, 'file:///example')
+        vc_obj2 = SvnVC(self.context, 'file:///other')
+        vc_obj3 = GitVC(self.context, 'file:///example')
+        self.assertEqual(vc_obj1, vc_obj1)
+        self.assertNotEqual(vc_obj1, vc_obj2)
+        self.assertNotEqual(vc_obj1, vc_obj3)
+        self.assertNotEqual(vc_obj2, vc_obj1)
+        self.assertEqual(vc_obj2, vc_obj2)
+        self.assertNotEqual(vc_obj1, vc_obj3)
 
     def test_svn_repr(self):
         """Test SvnVC.__repr__."""
@@ -329,6 +369,18 @@ class VCTestCase(unittest.TestCase):
         vc_obj = TarVC(self.context, os.path.join(self.tempdir, 'test.tar'))
         self.assertRaises(subprocess.CalledProcessError, vc_obj.vc_checkout,
                           self.srcdir, False)
+
+    def test_tar_eq(self):
+        """Test TarVC.__eq__."""
+        vc_obj1 = TarVC(self.context, '/example.tar')
+        vc_obj2 = TarVC(self.context, '/other.tar')
+        vc_obj3 = SvnVC(self.context, '/example.tar')
+        self.assertEqual(vc_obj1, vc_obj1)
+        self.assertNotEqual(vc_obj1, vc_obj2)
+        self.assertNotEqual(vc_obj1, vc_obj3)
+        self.assertNotEqual(vc_obj2, vc_obj1)
+        self.assertEqual(vc_obj2, vc_obj2)
+        self.assertNotEqual(vc_obj1, vc_obj3)
 
     def test_tar_repr(self):
         """Test TarVC.__repr__."""

@@ -128,6 +128,12 @@ class GitVC(VC):
         self._uri = uri
         self._branch = branch
 
+    def __eq__(self, other):
+        """Return whether a GitVC object compares equal to another object."""
+        return (isinstance(other, GitVC)
+                and self._uri == other._uri
+                and self._branch == other._branch)
+
     def __repr__(self):
         """Return a textual representation of a GitVC object.
 
@@ -154,6 +160,10 @@ class SvnVC(VC):
     def __init__(self, context, uri):
         super().__init__(context)
         self._uri = uri
+
+    def __eq__(self, other):
+        """Return whether an SvnVC object compares equal to another object."""
+        return isinstance(other, SvnVC) and self._uri == other._uri
 
     def __repr__(self):
         """Return a textual representation of an SvnVC object.
@@ -189,6 +199,10 @@ class TarVC(VC):
     def __init__(self, context, path):
         super().__init__(context)
         self._path = path
+
+    def __eq__(self, other):
+        """Return whether a TarVC object compares equal to another object."""
+        return isinstance(other, TarVC) and self._path == other._path
 
     def __repr__(self):
         """Return a textual representation of a TarVC object.

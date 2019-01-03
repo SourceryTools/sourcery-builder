@@ -537,10 +537,41 @@ class ConfigVarGroupTestCase(unittest.TestCase):
         time_after = int(time.time())
         # Test the list of release config variables.
         self.assertEqual(group.list_vars(),
-                         ['build', 'env_set', 'hosts', 'installdir', 'interp',
-                          'pkg_build', 'pkg_prefix', 'pkg_version',
-                          'script_full', 'source_date_epoch', 'target'])
+                         ['bootstrap_components_vc',
+                          'bootstrap_components_version', 'build', 'env_set',
+                          'hosts', 'installdir', 'interp', 'pkg_build',
+                          'pkg_prefix', 'pkg_version', 'script_full',
+                          'source_date_epoch', 'target'])
         # Test each variable's default value and type constraints.
+        self.assertEqual(group.bootstrap_components_vc.get(), {})
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable bootstrap_components_vc',
+                               group.bootstrap_components_vc.set,
+                               None)
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable bootstrap_components_vc',
+                               group.bootstrap_components_vc.set,
+                               {'sourcery_builder': None})
+        group.bootstrap_components_vc.set(
+            {'sourcery_builder': GitVC(self.context, '/some/where'),
+             'release_configs': SvnVC(self.context, 'file:///some/where'),
+             'generic': TarVC(self.context, '/some/where.tar')})
+        self.assertEqual(group.bootstrap_components_version.get(), {})
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable bootstrap_components_version',
+                               group.bootstrap_components_version.set,
+                               None)
+        self.assertRaisesRegex(ScriptError,
+                               r'bad type for value of release config '
+                               r'variable bootstrap_components_version',
+                               group.bootstrap_components_version.set,
+                               {'sourcery_builder': None})
+        group.bootstrap_components_version.set(
+            {'sourcery_builder': 'example',
+             'release_configs': 'other'})
         self.assertIsNone(group.build.get())
         self.assertRaisesRegex(ScriptError,
                                'bad type for value of release config variable '
@@ -927,13 +958,14 @@ class ReleaseConfigTestCase(unittest.TestCase):
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         self.assertEqual(relcfg.list_vars(),
-                         ['bindir', 'bindir_rel', 'build', 'env_set', 'hosts',
-                          'info_dir_rel', 'installdir', 'installdir_rel',
-                          'interp', 'pkg_build', 'pkg_name_full',
-                          'pkg_name_no_target_build', 'pkg_name_no_version',
-                          'pkg_prefix', 'pkg_version', 'script_full',
-                          'source_date_epoch', 'sysroot', 'sysroot_rel',
-                          'target', 'version'])
+                         ['bindir', 'bindir_rel', 'bootstrap_components_vc',
+                          'bootstrap_components_version', 'build', 'env_set',
+                          'hosts', 'info_dir_rel', 'installdir',
+                          'installdir_rel', 'interp', 'pkg_build',
+                          'pkg_name_full', 'pkg_name_no_target_build',
+                          'pkg_name_no_version', 'pkg_prefix', 'pkg_version',
+                          'script_full', 'source_date_epoch', 'sysroot',
+                          'sysroot_rel', 'target', 'version'])
 
     def test_add_component(self):
         """Test ReleaseConfig.add_component."""

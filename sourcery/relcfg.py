@@ -405,6 +405,44 @@ class ConfigVarGroup:
                      wrapping Sourcery Builder, or configs intended for use in
                      such environments, set this appropriately to enable such
                      checks for release builds.""")
+        self.add_var('bootstrap_components_vc',
+                     ConfigVarTypeDict(ConfigVarType(self.context, str),
+                                       ConfigVarType(self.context, VC)),
+                     {},
+                     """Expected branches of components involved in
+                     bootstrapping a checkout.
+
+                     When a config is checked out with a name for the config
+                     that implies a particular branch of the release_configs
+                     component, and a particular config therein, rather than
+                     being a full path to the file for the config, the config
+                     itself should also specify branches of components involved
+                     in checking itself out, such as sourcery_builder and
+                     release_configs, and the branches specified in the config
+                     need to be checked for consistency with those implied by
+                     the name given for the config.  This variable is expected
+                     to be set accordingly by site-specific packages wrapping
+                     Sourcery Builder, or configs intended for use in such
+                     environments.  The value of this variable is a dict whose
+                     keys are component names, and whose values are the
+                     corresponding VC objects.""")
+        self.add_var('bootstrap_components_version',
+                     ConfigVarTypeDict(ConfigVarType(self.context, str),
+                                       ConfigVarType(self.context, str)),
+                     {},
+                     """Expected versions of components involved in
+                     bootstrapping a checkout.
+
+                     Similar to bootstrap_components_vc, but stores expected
+                     values of the per-component version settings, so that when
+                     the components have already been checked out, it is
+                     reliably possible to locate the checkouts (of the
+                     release_configs component, for example) without needing to
+                     read files in them in order to do so.  Reliably locating
+                     checkouts also relies on known srcdirname values for such
+                     components; those are required to be the component name,
+                     with '_' changed to '-', so there is no such variable
+                     for srcdirname.""")
         self.add_var('interp', ConfigVarType(self.context, str),
                      self.context.interp,
                      """The expected full path to the Python interpreter

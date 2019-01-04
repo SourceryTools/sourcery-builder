@@ -596,6 +596,7 @@ class ReleaseConfigLoader:
                 relcfg.context.error('duplicate class name %s' % clsname)
             cfg_vars[clsname] = functools.partial(cls, relcfg.context)
         exec(contents, globals(), cfg_vars)  # pylint: disable=exec-used
+        self.apply_overrides(relcfg, name)
 
     def get_config_text(self, name):
         """Return the text of the release config specified."""
@@ -620,6 +621,18 @@ class ReleaseConfigLoader:
 
         """
         return []
+
+    def apply_overrides(self, relcfg, name):
+        """Apply any desired overrides to release config settings.
+
+        These overrides are applied after the config has been loaded
+        but before the subsequent processing of settings by
+        ReleaseConfig.__init__.  This is intended for subclasses to
+        use to force settings of bootstrap_components_vc,
+        bootstrap_components_version and script_full based on a branch
+        name included in the given release config name.
+
+        """
 
 
 class ReleaseConfigPathLoader(ReleaseConfigLoader):

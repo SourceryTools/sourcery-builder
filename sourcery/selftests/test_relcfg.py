@@ -783,8 +783,8 @@ class ReleaseConfigLoaderTestCase(unittest.TestCase):
 
     def test_load_config_text(self):
         """Test load_config, ReleaseConfigTextLoader case."""
-        # get_config_text, add_cfg_vars_extra and
-        # get_context_wrap_extra are interfaces for subclasses to
+        # get_config_text, add_cfg_vars_extra, get_context_wrap_extra
+        # and apply_overrides are interfaces for subclasses to
         # override and are not useful to test directly.  Here we test
         # the main functionality of loading configs (but not the work
         # done in the ReleaseConfig class).

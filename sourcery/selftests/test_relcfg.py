@@ -943,6 +943,147 @@ class ReleaseConfigTestCase(unittest.TestCase):
         """Test errors from ReleaseConfig.__init__."""
         loader = ReleaseConfigTextLoader()
         relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.bootstrap_components_vc.set({'
+                       '"sourcery_builder": GitVC("/some/where")})\n'
+                       'cfg.bootstrap_components_version.set({'
+                       '"release_configs": "master"})\n')
+        self.assertRaisesRegex(ScriptError,
+                               'inconsistent set of bootstrap components',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.bootstrap_components_vc.set({'
+                       '"sourcery_builder": GitVC("/some/where")})\n'
+                       'cfg.bootstrap_components_version.set({'
+                       '"sourcery_builder": "master"})\n')
+        self.assertRaisesRegex(ScriptError,
+                               'component sourcery_builder not in config',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.bootstrap_components_vc.set({'
+                       '"sourcery_builder": GitVC("/some/where")})\n'
+                       'cfg.bootstrap_components_version.set({'
+                       '"sourcery_builder": "master"})\n'
+                       'cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.source_type.set("none")\n')
+        self.assertRaisesRegex(ScriptError,
+                               'sourcery_builder has no sources',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.bootstrap_components_vc.set({'
+                       '"sourcery_builder": GitVC("/some/where")})\n'
+                       'cfg.bootstrap_components_version.set({'
+                       '"sourcery_builder": "master"})\n'
+                       'cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.srcdirname.set("sourcery")\n')
+        self.assertRaisesRegex(ScriptError,
+                               'sourcery_builder source directory name is '
+                               'sourcery, expected sourcery-builder',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        # This one is OK.
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.bootstrap_components_vc.set({'
+                       '"sourcery_builder": GitVC("/some/where")})\n'
+                       'cfg.bootstrap_components_version.set({'
+                       '"sourcery_builder": "master"})\n'
+                       'cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(GitVC("/some/where"))\n'
+                       'cfg.sourcery_builder.version.set("master")\n')
+        ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        # Variants on it with different vc or version settings aren't OK.
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.bootstrap_components_vc.set({'
+                       '"sourcery_builder": GitVC("/some/where")})\n'
+                       'cfg.bootstrap_components_version.set({'
+                       '"sourcery_builder": "master"})\n'
+                       'cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(GitVC("/some/other"))\n'
+                       'cfg.sourcery_builder.version.set("master")\n')
+        self.assertRaisesRegex(ScriptError,
+                               r"sourcery_builder sources from "
+                               r"GitVC\('/some/other', 'master'\), expected "
+                               r"GitVC\('/some/where', 'master'\)",
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.bootstrap_components_vc.set({'
+                       '"sourcery_builder": GitVC("/some/where")})\n'
+                       'cfg.bootstrap_components_version.set({'
+                       '"sourcery_builder": "master"})\n'
+                       'cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(GitVC("/some/where"))\n'
+                       'cfg.sourcery_builder.version.set("other")\n')
+        self.assertRaisesRegex(ScriptError,
+                               'sourcery_builder version is other, expected '
+                               'master',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        # Also test a case with more than one bootstrap component.
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.bootstrap_components_vc.set({'
+                       '"release_configs": GitVC("/some/relcfg"), '
+                       '"sourcery_builder": GitVC("/some/where")})\n'
+                       'cfg.bootstrap_components_version.set({'
+                       '"release_configs": "master", '
+                       '"sourcery_builder": "master"})\n'
+                       'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.vc.set(GitVC("/some/relcfg"))\n'
+                       'cfg.release_configs.version.set("master")\n'
+                       'cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(GitVC("/some/where"))\n'
+                       'cfg.sourcery_builder.version.set("master")\n')
+        ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.bootstrap_components_vc.set({'
+                       '"release_configs": GitVC("/some/relcfg"), '
+                       '"sourcery_builder": GitVC("/some/where")})\n'
+                       'cfg.bootstrap_components_version.set({'
+                       '"release_configs": "master", '
+                       '"sourcery_builder": "master"})\n'
+                       'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.vc.set(GitVC("/some/relcfg"))\n'
+                       'cfg.release_configs.version.set("master")\n'
+                       'cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(GitVC("/some/other"))\n'
+                       'cfg.sourcery_builder.version.set("master")\n')
+        self.assertRaisesRegex(ScriptError,
+                               r"sourcery_builder sources from "
+                               r"GitVC\('/some/other', 'master'\), expected "
+                               r"GitVC\('/some/where', 'master'\)",
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.bootstrap_components_vc.set({'
+                       '"release_configs": GitVC("/some/relcfg"), '
+                       '"sourcery_builder": GitVC("/some/where")})\n'
+                       'cfg.bootstrap_components_version.set({'
+                       '"release_configs": "master", '
+                       '"sourcery_builder": "master"})\n'
+                       'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.vc.set(GitVC("/some/relcfg"))\n'
+                       'cfg.release_configs.version.set("master")\n'
+                       'cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(GitVC("/some/where"))\n'
+                       'cfg.sourcery_builder.version.set("other")\n')
+        self.assertRaisesRegex(ScriptError,
+                               'sourcery_builder version is other, expected '
+                               'master',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.hosts.set(("i686-pc-linux-gnu", '
                        '"x86_64-linux-gnu"))\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')

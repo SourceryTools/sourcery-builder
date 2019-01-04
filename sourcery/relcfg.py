@@ -661,6 +661,35 @@ class ReleaseConfig:
         self._vg.add_release_config_vars()
         self._components = {'package'}
         loader.load_config(self, release_config)
+        bootstrap_components_vc = self.bootstrap_components_vc.get()
+        bootstrap_components_version = self.bootstrap_components_version.get()
+        if (sorted(bootstrap_components_vc.keys())
+            != sorted(bootstrap_components_version.keys())):
+            self.context.error('inconsistent set of bootstrap components')
+        for component in sorted(bootstrap_components_vc.keys()):
+            want_srcdirname = component.replace('_', '-')
+            want_vc = bootstrap_components_vc[component]
+            want_version = bootstrap_components_version[component]
+            # Use of get_component_vars ensures an error for components not
+            # present in the config.
+            c_vars = self.get_component_vars(component)
+            if c_vars.source_type.get() == 'none':
+                self.context.error('%s has no sources' % component)
+            actual_srcdirname = c_vars.srcdirname.get()
+            actual_vc = c_vars.vc.get()
+            actual_version = c_vars.version.get()
+            if actual_srcdirname != want_srcdirname:
+                self.context.error('%s source directory name is %s, '
+                                   'expected %s'
+                                   % (component, actual_srcdirname,
+                                      want_srcdirname))
+            if actual_version != want_version:
+                self.context.error('%s version is %s, expected %s'
+                                   % (component, actual_version, want_version))
+            if actual_vc != want_vc:
+                self.context.error('%s sources from %s, expected %s'
+                                   % (component, repr(actual_vc),
+                                      repr(want_vc)))
         self.env_set.get()['SOURCE_DATE_EPOCH'] = str(
             self.source_date_epoch.get())
         build_orig = self.build.get()

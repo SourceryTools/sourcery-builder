@@ -582,7 +582,7 @@ class ReleaseConfigLoader:
 
         contents = self.get_config_text(name)
         cfg_vars = {'cfg': relcfg}
-        self.add_cfg_vars_extra()
+        self.add_cfg_vars_extra(cfg_vars)
         context_wrap = [(sourcery.buildcfg, 'BuildCfg'),
                         (sourcery.pkghost, 'PkgHost'),
                         (sourcery.vc, 'GitVC'),
@@ -601,7 +601,7 @@ class ReleaseConfigLoader:
         """Return the text of the release config specified."""
         raise NotImplementedError
 
-    def add_cfg_vars_extra(self):
+    def add_cfg_vars_extra(self, cfg_vars):
         """Add any extra variables to set when loading a config.
 
         Subclasses loading from a file would set the name 'include'
@@ -629,7 +629,7 @@ class ReleaseConfigPathLoader(ReleaseConfigLoader):
         with open(name, 'r', encoding='utf-8') as file:
             return file.read()
 
-    def add_cfg_vars_extra(self):
+    def add_cfg_vars_extra(self, cfg_vars):
         pass
 
 

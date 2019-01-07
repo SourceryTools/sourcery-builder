@@ -767,6 +767,7 @@ class ReleaseConfigLoaderTestCase(unittest.TestCase):
         add_common_options(self.parser, os.getcwd())
         self.tempdir_td = tempfile.TemporaryDirectory()
         self.tempdir = self.tempdir_td.name
+        os.makedirs(os.path.join(self.tempdir, '1/2/3'))
 
     def tearDown(self):
         """Tear down a release config test."""
@@ -840,6 +841,27 @@ class ReleaseConfigLoaderTestCase(unittest.TestCase):
                                args)
         self.assertIsInstance(relcfg.generic.vc.get(), GitVC)
         self.assertEqual(relcfg.generic.version.get(), '1.23')
+        # Test use of 'include' in configs.
+        self.temp_config_write('cfg.add_component("generic")\n'
+                               'include("1/2/3/test.inc")\n'
+                               'cfg.target.set("aarch64-linux-gnu")\n')
+        with open(os.path.join(self.tempdir, '1/2/3/test.inc'), 'w',
+                  encoding='utf-8') as file:
+            file.write('cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'include("../../more.inc")\n'
+                       'include("../other.inc")\n')
+        with open(os.path.join(self.tempdir, '1/more.inc'), 'w',
+                  encoding='utf-8') as file:
+            file.write('cfg.generic.version.set("1.23")\n')
+        with open(os.path.join(self.tempdir, '1/2/other.inc'), 'w',
+                  encoding='utf-8') as file:
+            file.write('cfg.build.set("x86_64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, self.temp_config_file(), loader,
+                               args)
+        self.assertIsInstance(relcfg.generic.vc.get(), GitVC)
+        self.assertEqual(relcfg.generic.version.get(), '1.23')
+        self.assertEqual(relcfg.build.get().name, 'x86_64-linux-gnu')
+        self.assertEqual(relcfg.target.get(), 'aarch64-linux-gnu')
 
 
 class ReleaseConfigTestCase(unittest.TestCase):

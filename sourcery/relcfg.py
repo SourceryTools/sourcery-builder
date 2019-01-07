@@ -582,7 +582,7 @@ class ReleaseConfigLoader:
 
         contents = self.get_config_text(name)
         cfg_vars = {'cfg': relcfg}
-        self.add_cfg_vars_extra(cfg_vars)
+        self.add_cfg_vars_extra(cfg_vars, name)
         context_wrap = [(sourcery.buildcfg, 'BuildCfg'),
                         (sourcery.pkghost, 'PkgHost'),
                         (sourcery.vc, 'GitVC'),
@@ -602,7 +602,7 @@ class ReleaseConfigLoader:
         """Return the text of the release config specified."""
         raise NotImplementedError
 
-    def add_cfg_vars_extra(self, cfg_vars):
+    def add_cfg_vars_extra(self, cfg_vars, name):
         """Add any extra variables to set when loading a config.
 
         Subclasses loading from a file would set the name 'include'
@@ -642,8 +642,21 @@ class ReleaseConfigPathLoader(ReleaseConfigLoader):
         with open(name, 'r', encoding='utf-8') as file:
             return file.read()
 
-    def add_cfg_vars_extra(self, cfg_vars):
-        pass
+    def add_cfg_vars_extra(self, cfg_vars, name):
+        dir_name = os.path.dirname(os.path.abspath(name))
+
+        def include(inc_path):
+            """Include a file relative to the current config."""
+            nonlocal dir_name
+            inc_name = os.path.normpath(os.path.join(dir_name, inc_path))
+            save_dir_name = dir_name
+            dir_name = os.path.dirname(inc_name)
+            with open(inc_name, 'r', encoding='utf-8') as file:
+                contents = file.read()
+            exec(contents, globals(), cfg_vars)  # pylint: disable=exec-used
+            dir_name = save_dir_name
+
+        cfg_vars['include'] = include
 
 
 class ReleaseConfigTextLoader(ReleaseConfigLoader):

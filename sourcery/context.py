@@ -106,6 +106,8 @@ class ScriptContext:
         self.orig_script_full = os.path.abspath(sys.argv[0])
         # The full name of the script for executing other commands.
         self.script_full = self.orig_script_full
+        # The script arguments for re-execing this script (set in main).
+        self.argv = None
         # The Python interpreter for executing other commands.  This
         # may be changed from its original value based on the release
         # config.
@@ -257,7 +259,7 @@ class ScriptContext:
         """
         return [self.interp, '-s', '-E', self.script_full]
 
-    def exec_self(self, argv):
+    def exec_self(self):
         """Re-execute this script in a controlled environment.
 
         Re-execution may be required if environment variables were
@@ -265,10 +267,10 @@ class ScriptContext:
         user site packages were not disabled.
 
         """
-        argv = self.script_command() + argv
+        argv = self.script_command() + self.argv
         self.execve(self.interp, argv, self.environ)
 
-    def clean_environment(self, argv, extra_vars=None, reexec=False):
+    def clean_environment(self, extra_vars=None, reexec=False):
         """Clean the environment in which this script is run.
 
         If extra_vars is specified, it contains extra environment
@@ -314,12 +316,13 @@ class ScriptContext:
         for key in extra_vars:
             self.environ[key] = extra_vars[key]
         if reexec and need_reexec:
-            self.exec_self(argv)
+            self.exec_self()
 
     def main(self, loader, argv):
 
         """Main sourcery-builder command."""
-        self.clean_environment(argv)
+        self.argv = argv
+        self.clean_environment()
         parser = argparse.ArgumentParser()
         add_common_options(parser, os.getcwd())
         subparsers = parser.add_subparsers(dest='cmd_name')
@@ -343,7 +346,7 @@ class ScriptContext:
             relcfg = None
             extra_vars = None
         cmd_cls = self.commands[args.cmd_name]
-        self.clean_environment(argv, extra_vars=extra_vars,
+        self.clean_environment(extra_vars=extra_vars,
                                reexec=cmd_cls.check_script)
         cmd_cls.main(self, relcfg, args)
         self.inform_end()

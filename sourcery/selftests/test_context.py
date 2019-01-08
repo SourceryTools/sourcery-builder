@@ -340,7 +340,8 @@ class ContextTestCase(unittest.TestCase):
         # We can't test much more than repeating the function's logic.
         self.context.execve = unittest.mock.MagicMock()
         argv = ['arg1', 'arg2']
-        self.context.exec_self(argv)
+        self.context.argv = argv
+        self.context.exec_self()
         self.context.execve.assert_called_once_with(
             self.context.interp, self.context.script_command() + argv,
             self.context.environ)
@@ -365,8 +366,9 @@ class ContextTestCase(unittest.TestCase):
                     'OTHER': 'test-other',
                     'OTHER2': 'test-other2'}
         argv = ['arg1']
+        self.context.argv = argv
         self.context.environ = dict(test_env)
-        self.context.clean_environment(argv)
+        self.context.clean_environment()
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
         self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_not_called()
@@ -384,7 +386,7 @@ class ContextTestCase(unittest.TestCase):
         self.context.umask.reset_mock()
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
-        self.context.clean_environment(argv, reexec=True)
+        self.context.clean_environment(reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
         self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(
@@ -405,7 +407,6 @@ class ContextTestCase(unittest.TestCase):
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         self.context.clean_environment(
-            argv,
             extra_vars={'OTHER': 'mod-other',
                         'EXTRA': 'mod-extra',
                         'PATH': 'mod-path',
@@ -435,7 +436,7 @@ class ContextTestCase(unittest.TestCase):
         self.context.environ = dict(test_env)
         self.context.flags.no_user_site = True
         self.context.flags.ignore_environment = True
-        self.context.clean_environment(argv, reexec=True)
+        self.context.clean_environment(reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
         self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_not_called()
@@ -454,7 +455,7 @@ class ContextTestCase(unittest.TestCase):
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         self.context.flags.no_user_site = False
-        self.context.clean_environment(argv, reexec=True)
+        self.context.clean_environment(reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
         self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(
@@ -476,7 +477,7 @@ class ContextTestCase(unittest.TestCase):
         self.context.environ = dict(test_env)
         self.context.flags.no_user_site = True
         self.context.flags.ignore_environment = False
-        self.context.clean_environment(argv, reexec=True)
+        self.context.clean_environment(reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
         self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(
@@ -498,7 +499,7 @@ class ContextTestCase(unittest.TestCase):
         self.context.execve.reset_mock()
         self.context.environ = dict(test_env)
         del self.context.environ['PYTHONTEST']
-        self.context.clean_environment(argv, reexec=True)
+        self.context.clean_environment(reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
         self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_not_called()
@@ -519,7 +520,7 @@ class ContextTestCase(unittest.TestCase):
         self.context.flags.no_user_site = True
         self.context.flags.ignore_environment = True
         self.context.interp = sys.executable + '-other'
-        self.context.clean_environment(argv, reexec=True)
+        self.context.clean_environment(reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
         self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(
@@ -541,7 +542,7 @@ class ContextTestCase(unittest.TestCase):
         self.context.environ = dict(test_env)
         self.context.interp = sys.executable
         self.context.script_full = self.context.orig_script_full + '-other'
-        self.context.clean_environment(argv, reexec=True)
+        self.context.clean_environment(reexec=True)
         self.context.setlocale.assert_called_once_with(locale.LC_ALL, 'C')
         self.context.umask.assert_called_once_with(0o022)
         self.context.execve.assert_called_once_with(

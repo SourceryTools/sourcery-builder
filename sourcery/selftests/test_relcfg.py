@@ -39,7 +39,8 @@ from sourcery.vc import GitVC, SvnVC, TarVC
 
 __all__ = ['ConfigVarTypeTestCase', 'ConfigVarTestCase',
            'ConfigVarGroupTestCase', 'ComponentInConfigTestCase',
-           'AddReleaseConfigArgTestCase', 'ReleaseConfigLoaderTestCase']
+           'AddReleaseConfigArgTestCase', 'ReleaseConfigLoaderTestCase',
+           'ReleaseConfigTestCase']
 
 
 class ConfigVarTypeTestCase(unittest.TestCase):

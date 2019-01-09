@@ -580,9 +580,9 @@ class ReleaseConfigLoader:
 
         """
 
-        contents = self.get_config_text(name)
+        contents = self.get_config_text(relcfg, name)
         cfg_vars = {'cfg': relcfg}
-        self.add_cfg_vars_extra(cfg_vars, name)
+        self.add_cfg_vars_extra(relcfg, cfg_vars, name)
         context_wrap = [(sourcery.buildcfg, 'BuildCfg'),
                         (sourcery.pkghost, 'PkgHost'),
                         (sourcery.vc, 'GitVC'),
@@ -598,11 +598,11 @@ class ReleaseConfigLoader:
         exec(contents, globals(), cfg_vars)  # pylint: disable=exec-used
         self.apply_overrides(relcfg, name)
 
-    def get_config_text(self, name):
+    def get_config_text(self, relcfg, name):
         """Return the text of the release config specified."""
         raise NotImplementedError
 
-    def add_cfg_vars_extra(self, cfg_vars, name):
+    def add_cfg_vars_extra(self, relcfg, cfg_vars, name):
         """Add any extra variables to set when loading a config.
 
         Subclasses loading from a file would set the name 'include'
@@ -636,14 +636,81 @@ class ReleaseConfigLoader:
 
 
 class ReleaseConfigPathLoader(ReleaseConfigLoader):
-    """Load a release config from an absolute or relative path."""
+    """Load a release config from an absolute or relative path.
 
-    def get_config_text(self, name):
-        with open(name, 'r', encoding='utf-8') as file:
+    A path may also be specified as <branch>:<config>, meaning that
+    the config comes from the specified branch of the release_configs
+    component and that corresponding branches of sourcery_builder and
+    any other components involved in the checkout process must also be
+    used.  The mapping from branch names to URIs for the checkout must
+    come from a subclass; the mapping to version numbers is defined in
+    this class.  If an appropriately named release-configs directory
+    is present in srcdir, it is used, without any verification that
+    the correct scripts directories are being used until after the
+    config is loaded (after which the script may re-exec itself
+    depending on the check_script setting for the running command).
+
+    """
+
+    bootstrap_components = ()
+    """Components to add to bootstrap_components_vc and
+    bootstrap_components_version.
+
+    This is empty here because it is not useful without a subclass
+    overriding branch_to_vc.
+
+    """
+
+    script_component = 'sourcery_builder'
+    """The component with the build script."""
+
+    script_name = 'sourcery-builder'
+    """The name of the build script."""
+
+    def branch_to_vc(self, relcfg, component, branch):
+        """Return the expected VC object from which component sources come.
+
+        This is applied to release_configs, sourcery_builder and any
+        other bootstrap components.
+
+        """
+        raise NotImplementedError
+
+    def branch_to_version(self, branch):  # pylint: disable=no-self-use
+        """Return the expected version for a bootstrap component."""
+        return branch.replace('/', '-')
+
+    def branch_to_srcdir(self, relcfg, component, branch):
+        """Return the source directory for a bootstrap component."""
+        component = component.replace('_', '-')
+        version = self.branch_to_version(branch)
+        return os.path.join(relcfg.args.srcdir, '%s-%s' % (component, version))
+
+    def get_config_path(self, relcfg, name):
+        """Return the path and top-level directory to use for a release
+        config."""
+        if ':' not in name:
+            return name, '/'
+        branch, config = name.split(':', 1)
+        relcfgs_dir = self.branch_to_srcdir(relcfg, 'release_configs', branch)
+        path = os.path.join(relcfgs_dir, config)
+        return path, relcfgs_dir
+
+    def get_config_text(self, relcfg, name):
+        path, dummy_dir = self.get_config_path(relcfg, name)
+        with open(path, 'r', encoding='utf-8') as file:
             return file.read()
 
-    def add_cfg_vars_extra(self, cfg_vars, name):
-        dir_name = os.path.dirname(os.path.abspath(name))
+    def add_cfg_vars_extra(self, relcfg, cfg_vars, name):
+        path, top_dir = self.get_config_path(relcfg, name)
+        dir_name = os.path.dirname(os.path.abspath(path))
+        # This check and the similar one below cover the simple cases
+        # of bad paths to configs, rather than all possible cases
+        # (paths that go outside and then inside the release-configs
+        # directory, absolute paths to that directory).
+        if os.path.commonpath([top_dir, dir_name]) != top_dir:
+            relcfg.context.error('release config path %s outside directory %s'
+                                 % (path, top_dir))
 
         def include(inc_path):
             """Include a file relative to the current config."""
@@ -651,6 +718,9 @@ class ReleaseConfigPathLoader(ReleaseConfigLoader):
             inc_name = os.path.normpath(os.path.join(dir_name, inc_path))
             save_dir_name = dir_name
             dir_name = os.path.dirname(inc_name)
+            if os.path.commonpath([top_dir, dir_name]) != top_dir:
+                relcfg.context.error('release config path %s outside '
+                                     'directory %s' % (inc_name, top_dir))
             with open(inc_name, 'r', encoding='utf-8') as file:
                 contents = file.read()
             exec(contents, globals(), cfg_vars)  # pylint: disable=exec-used
@@ -658,11 +728,33 @@ class ReleaseConfigPathLoader(ReleaseConfigLoader):
 
         cfg_vars['include'] = include
 
+    def apply_overrides(self, relcfg, name):
+        if ':' not in name:
+            return
+        if not self.bootstrap_components:
+            return
+        branch, dummy_config = name.split(':', 1)
+        bootstrap_components_vc = {}
+        bootstrap_components_version = {}
+        for component in self.bootstrap_components:
+            bootstrap_components_vc[component] = self.branch_to_vc(relcfg,
+                                                                   component,
+                                                                   branch)
+            bootstrap_components_version[component] = self.branch_to_version(
+                branch)
+        relcfg.script_full.set_implicit(
+            os.path.join(self.branch_to_srcdir(relcfg, self.script_component,
+                                               branch),
+                         self.script_name))
+        relcfg.bootstrap_components_vc.set_implicit(bootstrap_components_vc)
+        relcfg.bootstrap_components_version.set_implicit(
+            bootstrap_components_version)
+
 
 class ReleaseConfigTextLoader(ReleaseConfigLoader):
     """Load a release config from a string."""
 
-    def get_config_text(self, name):
+    def get_config_text(self, relcfg, name):
         return name
 
 

@@ -25,6 +25,7 @@ import os.path
 import tempfile
 import time
 import unittest
+import unittest.mock
 
 from sourcery.buildcfg import BuildCfg
 from sourcery.context import add_common_options, ScriptContext, ScriptError
@@ -39,8 +40,8 @@ from sourcery.vc import GitVC, SvnVC, TarVC
 
 __all__ = ['ConfigVarTypeTestCase', 'ConfigVarTestCase',
            'ConfigVarGroupTestCase', 'ComponentInConfigTestCase',
-           'AddReleaseConfigArgTestCase', 'ReleaseConfigLoaderTestCase',
-           'ReleaseConfigTestCase']
+           'AddReleaseConfigArgTestCase', 'ReleaseConfigPathLoaderSub',
+           'ReleaseConfigLoaderTestCase', 'ReleaseConfigTestCase']
 
 
 class ConfigVarTypeTestCase(unittest.TestCase):
@@ -757,6 +758,16 @@ class AddReleaseConfigArgTestCase(unittest.TestCase):
         self.assertEqual(args.release_config, 'test.cfg')
 
 
+class ReleaseConfigPathLoaderSub(ReleaseConfigPathLoader):
+
+    """Subclass of ReleaseConfigPathLoader for test purposes."""
+
+    bootstrap_components = ('release_configs', 'sourcery_builder')
+
+    def branch_to_vc(self, relcfg, component, branch):
+        return GitVC(relcfg.context, '/some/where/%s.git' % component, branch)
+
+
 class ReleaseConfigLoaderTestCase(unittest.TestCase):
 
     """Test the ReleaseConfigLoader class and subclasses."""
@@ -765,10 +776,11 @@ class ReleaseConfigLoaderTestCase(unittest.TestCase):
         """Set up a release config test."""
         self.context = ScriptContext(['sourcery.selftests'])
         self.parser = argparse.ArgumentParser()
-        add_common_options(self.parser, os.getcwd())
         self.tempdir_td = tempfile.TemporaryDirectory()
         self.tempdir = self.tempdir_td.name
+        add_common_options(self.parser, self.tempdir)
         os.makedirs(os.path.join(self.tempdir, '1/2/3'))
+        os.makedirs(os.path.join(self.tempdir, 'src/release-configs-x-y/1'))
 
     def tearDown(self):
         """Tear down a release config test."""
@@ -863,6 +875,201 @@ class ReleaseConfigLoaderTestCase(unittest.TestCase):
         self.assertEqual(relcfg.generic.version.get(), '1.23')
         self.assertEqual(relcfg.build.get().name, 'x86_64-linux-gnu')
         self.assertEqual(relcfg.target.get(), 'aarch64-linux-gnu')
+
+    def test_load_config_path_branch(self):
+        """Test load_config, ReleaseConfigPathLoader case, branch named."""
+        loader = ReleaseConfigPathLoader()
+        args = self.parser.parse_args([])
+        relcfg_text = ('cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg_dir = os.path.join(self.tempdir, 'src/release-configs-x-y')
+        relcfg_file = os.path.join(relcfg_dir, 'test.cfg')
+        with open(relcfg_file, 'w', encoding='utf-8') as file:
+            file.write(relcfg_text)
+        relcfg = ReleaseConfig(self.context, 'x/y:test.cfg', loader, args)
+        self.assertIsInstance(relcfg.generic.vc.get(), GitVC)
+        self.assertEqual(relcfg.generic.version.get(), '1.23')
+        with open(os.path.join(relcfg_dir, '1/test.cfg'), 'w',
+                  encoding='utf-8') as file:
+            file.write('cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'include("../test.inc")\n')
+        with open(os.path.join(relcfg_dir, 'test.inc'), 'w',
+                  encoding='utf-8') as file:
+            file.write('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("arm-linux-gnueabi")\n')
+        relcfg = ReleaseConfig(self.context, 'x/y:1/test.cfg', loader, args)
+        self.assertIsInstance(relcfg.generic.vc.get(), GitVC)
+        self.assertEqual(relcfg.generic.version.get(), '1.23')
+        self.assertEqual(relcfg.build.get().name, 'x86_64-linux-gnu')
+        self.assertEqual(relcfg.target.get(), 'arm-linux-gnueabi')
+
+    def test_load_config_path_branch_errors(self):
+        """Test load_config, ReleaseConfigPathLoader branch case errors."""
+        loader = ReleaseConfigPathLoader()
+        args = self.parser.parse_args([])
+        relcfg_dir = os.path.join(self.tempdir, 'src/release-configs-x-y')
+        relcfg_file = os.path.join(relcfg_dir, 'test.cfg')
+        with open(relcfg_file, 'w', encoding='utf-8') as file:
+            file.write('include("../bad-path.inc")\n')
+        with open(os.path.join(self.tempdir, 'src/example'), 'w',
+                  encoding='utf-8') as file:
+            file.write('\n')
+        self.assertRaisesRegex(ScriptError,
+                               'release config path .* outside directory',
+                               ReleaseConfig, self.context, 'x/y:../example',
+                               loader, args)
+        self.assertRaisesRegex(ScriptError,
+                               'release config path .* outside directory',
+                               ReleaseConfig, self.context, 'x/y:/dev/null',
+                               loader, args)
+        self.assertRaisesRegex(ScriptError,
+                               'release config path .* outside directory',
+                               ReleaseConfig, self.context, 'x/y:test.cfg',
+                               loader, args)
+
+    def test_load_config_path_sub_branch(self):
+        """Test load_config, ReleaseConfigPathLoaderSub case, branch named."""
+        loader = ReleaseConfigPathLoaderSub()
+        args = self.parser.parse_args([])
+        relcfg_text = ('cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(GitVC('
+                       '"/some/where/sourcery_builder.git", "x/y"))\n'
+                       'cfg.sourcery_builder.version.set("x-y")\n'
+                       'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.source_type.set("open")\n'
+                       'cfg.release_configs.vc.set(GitVC('
+                       '"/some/where/release_configs.git", "x/y"))\n'
+                       'cfg.release_configs.version.set("x-y")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg_dir = os.path.join(self.tempdir, 'src/release-configs-x-y')
+        relcfg_file = os.path.join(relcfg_dir, 'test.cfg')
+        with open(relcfg_file, 'w', encoding='utf-8') as file:
+            file.write(relcfg_text)
+        relcfg = ReleaseConfig(self.context, 'x/y:test.cfg', loader, args)
+        self.assertEqual(relcfg.script_full.get(),
+                         os.path.join(
+                             self.tempdir,
+                             'src/sourcery-builder-x-y/sourcery-builder'))
+        self.assertEqual(relcfg.bootstrap_components_vc.get(),
+                         {'release_configs':
+                          GitVC(self.context,
+                                '/some/where/release_configs.git', 'x/y'),
+                          'sourcery_builder':
+                          GitVC(self.context,
+                                '/some/where/sourcery_builder.git', 'x/y')})
+        self.assertEqual(relcfg.bootstrap_components_version.get(),
+                         {'release_configs': 'x-y',
+                          'sourcery_builder': 'x-y'})
+
+    def test_load_config_path_sub_branch_errors(self):
+        """Test load_config, ReleaseConfigPathLoaderSub branch case errors."""
+        loader = ReleaseConfigPathLoaderSub()
+        args = self.parser.parse_args([])
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg_dir = os.path.join(self.tempdir, 'src/release-configs-x-y')
+        relcfg_file = os.path.join(relcfg_dir, 'test.cfg')
+        with open(relcfg_file, 'w', encoding='utf-8') as file:
+            file.write(relcfg_text)
+        self.assertRaisesRegex(ScriptError,
+                               'component release_configs not in config',
+                               ReleaseConfig, self.context, 'x/y:test.cfg',
+                               loader, args)
+        relcfg_text = ('cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(GitVC('
+                       '"/some/where/sourcery_builder.git", "x/y"))\n'
+                       'cfg.sourcery_builder.version.set("x-y")\n'
+                       'cfg.sourcery_builder.srcdirname.set("sb")\n'
+                       'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.source_type.set("open")\n'
+                       'cfg.release_configs.vc.set(GitVC('
+                       '"/some/where/release_configs.git", "x/y"))\n'
+                       'cfg.release_configs.version.set("x-y")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        with open(relcfg_file, 'w', encoding='utf-8') as file:
+            file.write(relcfg_text)
+        self.assertRaisesRegex(ScriptError,
+                               'sourcery_builder source directory name is '
+                               'sb, expected sourcery-builder',
+                               ReleaseConfig, self.context, 'x/y:test.cfg',
+                               loader, args)
+        relcfg_text = ('cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(GitVC('
+                       '"/some/where/sourcery_builder.git", "x/y"))\n'
+                       'cfg.sourcery_builder.version.set("xy")\n'
+                       'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.source_type.set("open")\n'
+                       'cfg.release_configs.vc.set(GitVC('
+                       '"/some/where/release_configs.git", "x/y"))\n'
+                       'cfg.release_configs.version.set("x-y")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        with open(relcfg_file, 'w', encoding='utf-8') as file:
+            file.write(relcfg_text)
+        self.assertRaisesRegex(ScriptError,
+                               'sourcery_builder version is xy, expected x-y',
+                               ReleaseConfig, self.context, 'x/y:test.cfg',
+                               loader, args)
+        relcfg_text = ('cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(GitVC('
+                       '"/some/other/sourcery_builder.git", "x/y"))\n'
+                       'cfg.sourcery_builder.version.set("x-y")\n'
+                       'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.source_type.set("open")\n'
+                       'cfg.release_configs.vc.set(GitVC('
+                       '"/some/where/release_configs.git", "x/y"))\n'
+                       'cfg.release_configs.version.set("x-y")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        with open(relcfg_file, 'w', encoding='utf-8') as file:
+            file.write(relcfg_text)
+        self.assertRaisesRegex(ScriptError,
+                               'sourcery_builder sources from GitVC.*, '
+                               'expected GitVC',
+                               ReleaseConfig, self.context, 'x/y:test.cfg',
+                               loader, args)
+
+    def test_path_branch_to_version(self):
+        """Test ReleaseConfigPathLoader.branch_to_version."""
+        # This function is not particularly useful as an external
+        # interface, but is tested here anyway.
+        loader = ReleaseConfigPathLoader()
+        self.assertEqual(loader.branch_to_version('example'), 'example')
+        self.assertEqual(loader.branch_to_version('sub/dir'), 'sub-dir')
+        self.assertEqual(loader.branch_to_version('sub/dir/2'), 'sub-dir-2')
+
+    def test_path_branch_to_srcdir(self):
+        """Test ReleaseConfigPathLoader.branch_to_srcdir."""
+        # This function is not particularly useful as an external
+        # interface, but is tested here anyway.
+        relcfg = unittest.mock.MagicMock()
+        relcfg.args = unittest.mock.MagicMock()
+        relcfg.args.srcdir = '/src/dir'
+        loader = ReleaseConfigPathLoader()
+        self.assertEqual(loader.branch_to_srcdir(relcfg, 'release_configs',
+                                                 'x/y'),
+                         '/src/dir/release-configs-x-y')
+
+    def test_path_get_config_path(self):
+        """Test ReleaseConfigPathLoader.get_config_path."""
+        # This function is not particularly useful as an external
+        # interface, but is tested here anyway.
+        relcfg = unittest.mock.MagicMock()
+        relcfg.args = unittest.mock.MagicMock()
+        relcfg.args.srcdir = '/src/dir'
+        loader = ReleaseConfigPathLoader()
+        self.assertEqual(loader.get_config_path(relcfg, 'a/b.cfg'),
+                         ('a/b.cfg', '/'))
+        self.assertEqual(loader.get_config_path(relcfg, 'p/q/r:a/b.cfg'),
+                         ('/src/dir/release-configs-p-q-r/a/b.cfg',
+                          '/src/dir/release-configs-p-q-r'))
 
 
 class ReleaseConfigTestCase(unittest.TestCase):

@@ -18,4 +18,4 @@
 
 """Sourcery Builder selftests.commands package."""
 
-__all__ = ['generic', 'null', 'reexec', 'reexec_relcfg']
+__all__ = ['bootstrap_command', 'generic', 'null', 'reexec', 'reexec_relcfg']

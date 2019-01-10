@@ -108,6 +108,8 @@ class ScriptContext:
         self.script_full = self.orig_script_full
         # The script arguments for re-execing this script (set in main).
         self.argv = None
+        # Whether this command is used to bootstrap a checkout.
+        self.bootstrap_command = False
         # The Python interpreter for executing other commands.  This
         # may be changed from its original value based on the release
         # config.
@@ -337,6 +339,8 @@ class ScriptContext:
         self.verbose_messages = args.verbose
         self._set_script(args.cmd_name)
         self.inform_start(argv)
+        cmd_cls = self.commands[args.cmd_name]
+        self.bootstrap_command = cmd_cls.bootstrap_command
         if 'release_config' in vars(args):
             relcfg = ReleaseConfig(self, args.release_config, loader, args)
             extra_vars = relcfg.env_set.get()
@@ -345,7 +349,6 @@ class ScriptContext:
         else:
             relcfg = None
             extra_vars = None
-        cmd_cls = self.commands[args.cmd_name]
         self.clean_environment(extra_vars=extra_vars,
                                reexec=cmd_cls.check_script)
         cmd_cls.main(self, relcfg, args)

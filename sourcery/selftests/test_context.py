@@ -142,6 +142,7 @@ class ContextTestCase(unittest.TestCase):
         self.assertEqual(self.context.script_full,
                          os.path.abspath(sys.argv[0]))
         self.assertIsNone(self.context.argv)
+        self.assertFalse(self.context.bootstrap_command)
         self.assertEqual(self.context.interp, sys.executable)
         self.assertEqual(self.context.script_only,
                          os.path.basename(sys.argv[0]))
@@ -569,6 +570,7 @@ class ContextTestCase(unittest.TestCase):
         context.flags.ignore_environment = False
         context.execve = unittest.mock.MagicMock()
         context.called_with_relcfg = unittest.mock.MagicMock()
+        context.bootstrap_command = True
         test_env = {'HOME': 'test-home',
                     'LOGNAME': 'test-logname',
                     'SSH_AUTH_SOCK': 'test-sock',
@@ -584,6 +586,7 @@ class ContextTestCase(unittest.TestCase):
         context.message_file = io.StringIO()
         context.main(None, ['-i', 'instarg', 'generic', 'arg1'])
         self.assertEqual(context.argv, ['-i', 'instarg', 'generic', 'arg1'])
+        self.assertFalse(context.bootstrap_command)
         self.assertFalse(context.silent)
         self.assertFalse(context.verbose_messages)
         self.assertEqual(context.script, '%s generic' % context.script_only)
@@ -863,3 +866,15 @@ class ContextTestCase(unittest.TestCase):
                               ))})
         self.assertEqual(context.script_full, context.orig_script_full)
         self.assertEqual(context.interp, '%s-other' % sys.executable)
+        # Test bootstrap_command.
+        context.setlocale.reset_mock()
+        context.umask.reset_mock()
+        context.execve.reset_mock()
+        context.called_with_relcfg = unittest.mock.MagicMock()
+        context.environ = dict(test_env)
+        context.bootstrap_command = False
+        context.main(None, ['bootstrap-command'])
+        context.setlocale.assert_called_with(locale.LC_ALL, 'C')
+        context.umask.assert_called_with(0o022)
+        context.execve.assert_not_called()
+        self.assertTrue(context.bootstrap_command)

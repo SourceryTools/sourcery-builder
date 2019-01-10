@@ -49,6 +49,17 @@ class Command:
 
     """
 
+    bootstrap_command = False
+    """Whether this command is used to bootstrap a checkout.
+
+    If the command is used to bootstrap a checkout, and component
+    branches are specified to a subclass of ReleaseConfigPathLoader,
+    those branches will first be checked out if not already checked
+    out, then the script will re-exec itself from the copy in the
+    source directory if that was not the copy originally run.
+
+    """
+
     @staticmethod
     def add_arguments(parser):
         """Add command-specific arguments to the parser.

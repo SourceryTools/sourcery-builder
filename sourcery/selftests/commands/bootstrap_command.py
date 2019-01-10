@@ -1,6 +1,6 @@
-# sourcery-builder checkout command.
+# sourcery-builder bootstrap-command command for testing.
 
-# Copyright 2018-2019 Mentor Graphics Corporation.
+# Copyright 2019 Mentor Graphics Corporation.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as
@@ -16,27 +16,24 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""sourcery-builder checkout command."""
+"""sourcery-builder bootstrap-command command for testing."""
 
 import sourcery.command
-from sourcery.relcfg import add_release_config_arg
 
 __all__ = ['Command']
 
 
 class Command(sourcery.command.Command):
-    """sourcery-builder checkout implementation."""
+    """bootstrap-command command implementation."""
 
-    short_desc = 'Check out toolchain sources.'
+    short_desc = 'Test bootstrap command.'
 
     bootstrap_command = True
 
     @staticmethod
     def add_arguments(parser):
-        add_release_config_arg(parser)
+        pass
 
     @staticmethod
     def main(context, relcfg, args):
-        for component in relcfg.list_source_components():
-            vc_obj = component.vars.vc.get()
-            vc_obj.checkout_component(component)
+        pass

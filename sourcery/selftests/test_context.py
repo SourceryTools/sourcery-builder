@@ -141,6 +141,7 @@ class ContextTestCase(unittest.TestCase):
                          os.path.abspath(sys.argv[0]))
         self.assertEqual(self.context.script_full,
                          os.path.abspath(sys.argv[0]))
+        self.assertIsNone(self.context.argv)
         self.assertEqual(self.context.interp, sys.executable)
         self.assertEqual(self.context.script_only,
                          os.path.basename(sys.argv[0]))
@@ -582,6 +583,7 @@ class ContextTestCase(unittest.TestCase):
         # Test generic command execution, no release config.
         context.message_file = io.StringIO()
         context.main(None, ['-i', 'instarg', 'generic', 'arg1'])
+        self.assertEqual(context.argv, ['-i', 'instarg', 'generic', 'arg1'])
         self.assertFalse(context.silent)
         self.assertFalse(context.verbose_messages)
         self.assertEqual(context.script, '%s generic' % context.script_only)

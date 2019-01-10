@@ -20,6 +20,7 @@
 
 import collections.abc
 import functools
+import os
 import os.path
 import time
 
@@ -686,6 +687,13 @@ class ReleaseConfigPathLoader(ReleaseConfigLoader):
         version = self.branch_to_version(branch)
         return os.path.join(relcfg.args.srcdir, '%s-%s' % (component, version))
 
+    def branch_to_script(self, relcfg, branch):
+        """Return the expected location of the build script."""
+        return os.path.join(self.branch_to_srcdir(relcfg,
+                                                  self.script_component,
+                                                  branch),
+                            self.script_name)
+
     def get_config_path(self, relcfg, name):
         """Return the path and top-level directory to use for a release
         config."""
@@ -697,7 +705,29 @@ class ReleaseConfigPathLoader(ReleaseConfigLoader):
         return path, relcfgs_dir
 
     def get_config_text(self, relcfg, name):
-        path, dummy_dir = self.get_config_path(relcfg, name)
+        path, relcfgs_dir = self.get_config_path(relcfg, name)
+        need_bootstrap = False
+        if ':' in name and relcfg.context.bootstrap_command:
+            # If the release configs directory does not exist, or the
+            # script is not run from the expected location, bootstrap
+            # checkouts of all required components and then re-exec
+            # the script.
+            if not os.access(relcfgs_dir, os.F_OK):
+                need_bootstrap = True
+            branch, dummy_config = name.split(':', 1)
+            expect_script = self.branch_to_script(relcfg, branch)
+            if relcfg.context.orig_script_full != expect_script:
+                relcfg.context.script_full = expect_script
+                need_bootstrap = True
+        if need_bootstrap:
+            os.makedirs(relcfg.args.srcdir, exist_ok=True)
+            for component in self.bootstrap_components:
+                vc_obj = self.branch_to_vc(relcfg, component, branch)
+                component_srcdir = self.branch_to_srcdir(relcfg, component,
+                                                         branch)
+                if not os.access(component_srcdir, os.F_OK):
+                    vc_obj.vc_checkout(component_srcdir, False)
+            relcfg.context.exec_self()
         with open(path, 'r', encoding='utf-8') as file:
             return file.read()
 
@@ -742,10 +772,7 @@ class ReleaseConfigPathLoader(ReleaseConfigLoader):
                                                                    branch)
             bootstrap_components_version[component] = self.branch_to_version(
                 branch)
-        relcfg.script_full.set_implicit(
-            os.path.join(self.branch_to_srcdir(relcfg, self.script_component,
-                                               branch),
-                         self.script_name))
+        relcfg.script_full.set_implicit(self.branch_to_script(relcfg, branch))
         relcfg.bootstrap_components_vc.set_implicit(bootstrap_components_vc)
         relcfg.bootstrap_components_version.set_implicit(
             bootstrap_components_version)

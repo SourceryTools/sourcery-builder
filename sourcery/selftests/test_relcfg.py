@@ -22,6 +22,8 @@ import argparse
 import collections
 import os
 import os.path
+import shutil
+import subprocess
 import tempfile
 import time
 import unittest
@@ -36,6 +38,7 @@ from sourcery.relcfg import ConfigVarType, ConfigVarTypeList, \
     ComponentInConfig, add_release_config_arg, ReleaseConfigPathLoader, \
     ReleaseConfigTextLoader, ReleaseConfig
 import sourcery.selftests.components.generic
+from sourcery.selftests.support import create_files, read_files
 from sourcery.vc import GitVC, SvnVC, TarVC
 
 __all__ = ['ConfigVarTypeTestCase', 'ConfigVarTestCase',
@@ -768,6 +771,23 @@ class ReleaseConfigPathLoaderSub(ReleaseConfigPathLoader):
         return GitVC(relcfg.context, '/some/where/%s.git' % component, branch)
 
 
+class ReleaseConfigPathLoaderTar(ReleaseConfigPathLoader):
+
+    """Subclass of ReleaseConfigPathLoader for test purposes."""
+
+    bootstrap_components = ('release_configs', 'sourcery_builder')
+
+    def __init__(self, tar_dir):
+        self.tar_dir = tar_dir
+
+    def branch_to_vc(self, relcfg, component, branch):
+        return TarVC(relcfg.context,
+                     os.path.join(
+                         self.tar_dir,
+                         '%s-%s.tar' % (component,
+                                        self.branch_to_version(branch))))
+
+
 class ReleaseConfigLoaderTestCase(unittest.TestCase):
 
     """Test the ReleaseConfigLoader class and subclasses."""
@@ -1036,6 +1056,67 @@ class ReleaseConfigLoaderTestCase(unittest.TestCase):
                                ReleaseConfig, self.context, 'x/y:test.cfg',
                                loader, args)
 
+    def test_load_config_path_bootstrap(self):
+        """Test load_config, ReleaseConfigPathLoader, bootstrap case."""
+        loader = ReleaseConfigPathLoaderTar(self.tempdir)
+        self.context.argv = ['test', 'argv']
+        self.context.bootstrap_command = True
+        self.context.execve = unittest.mock.MagicMock()
+        self.context.silent = True
+        self.context.execute_silent = True
+        args = self.parser.parse_args([])
+        shutil.rmtree(os.path.join(self.tempdir, 'src'))
+        relcfg_text = ('cfg.add_component("sourcery_builder")\n'
+                       'cfg.sourcery_builder.vc.set(TarVC('
+                       '"%s/sourcery_builder-y-z.tar"))\n'
+                       'cfg.sourcery_builder.version.set("y-z")\n'
+                       'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.source_type.set("open")\n'
+                       'cfg.release_configs.vc.set(TarVC('
+                       '"%s/release_configs-y-z.tar"))\n'
+                       'cfg.release_configs.version.set("y-z")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       % (self.tempdir, self.tempdir))
+        test_input_dir = os.path.join(self.tempdir, 'input')
+        create_files(test_input_dir,
+                     ['empty', 'rc'],
+                     {'rc/test.cfg': relcfg_text},
+                     {})
+        subprocess.run(['tar', '-c', '-f', '../sourcery_builder-y-z.tar',
+                        'empty'],
+                       cwd=test_input_dir, check=True)
+        subprocess.run(['tar', '-c', '-f', '../release_configs-y-z.tar',
+                        'rc'],
+                       cwd=test_input_dir, check=True)
+        relcfg = ReleaseConfig(self.context, 'y/z:test.cfg', loader, args)
+        self.assertEqual(self.context.script_full, os.path.join(
+            self.tempdir, 'src/sourcery-builder-y-z/sourcery-builder'))
+        self.context.execve.assert_called_once_with(
+            self.context.interp,
+            self.context.script_command() + ['test', 'argv'],
+            self.context.environ)
+        self.assertEqual(read_files(os.path.join(self.tempdir, 'src')),
+                         ({'release-configs-y-z', 'sourcery-builder-y-z'},
+                          {'release-configs-y-z/test.cfg': relcfg_text},
+                          {}))
+        self.assertEqual(relcfg.target.get(), 'aarch64-linux-gnu')
+        # Even with scripts and release configs checked out, bootstrap
+        # still needed if the script run was wrong.
+        self.context.execve.reset_mock()
+        self.context.script_full = self.context.orig_script_full
+        relcfg = ReleaseConfig(self.context, 'y/z:test.cfg', loader, args)
+        self.assertEqual(self.context.script_full, os.path.join(
+            self.tempdir, 'src/sourcery-builder-y-z/sourcery-builder'))
+        self.context.execve.assert_called_once_with(
+            self.context.interp,
+            self.context.script_command() + ['test', 'argv'],
+            self.context.environ)
+        self.assertEqual(read_files(os.path.join(self.tempdir, 'src')),
+                         ({'release-configs-y-z', 'sourcery-builder-y-z'},
+                          {'release-configs-y-z/test.cfg': relcfg_text},
+                          {}))
+
     def test_path_branch_to_version(self):
         """Test ReleaseConfigPathLoader.branch_to_version."""
         # This function is not particularly useful as an external
@@ -1056,6 +1137,17 @@ class ReleaseConfigLoaderTestCase(unittest.TestCase):
         self.assertEqual(loader.branch_to_srcdir(relcfg, 'release_configs',
                                                  'x/y'),
                          '/src/dir/release-configs-x-y')
+
+    def test_path_branch_to_script(self):
+        """Test ReleaseConfigPathLoader.branch_to_script."""
+        # This function is not particularly useful as an external
+        # interface, but is tested here anyway.
+        relcfg = unittest.mock.MagicMock()
+        relcfg.args = unittest.mock.MagicMock()
+        relcfg.args.srcdir = '/src/dir'
+        loader = ReleaseConfigPathLoader()
+        self.assertEqual(loader.branch_to_script(relcfg, 'x/y'),
+                         '/src/dir/sourcery-builder-x-y/sourcery-builder')
 
     def test_path_get_config_path(self):
         """Test ReleaseConfigPathLoader.get_config_path."""

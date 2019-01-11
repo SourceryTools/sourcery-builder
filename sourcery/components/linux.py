@@ -73,8 +73,9 @@ def _contribute_headers_tree(cfg, host, host_group, is_build):
         host_group.contribute_implicit_install(host_b, 'toolchain-1-before',
                                                tree)
         host_group.contribute_implicit_install(host_b, 'toolchain-1', tree)
-    host_group.contribute_implicit_install(host_b, 'toolchain-2-before', tree)
-    host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+        host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
+                                               tree)
+        host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
     host_group.contribute_package(host, tree)
 
 

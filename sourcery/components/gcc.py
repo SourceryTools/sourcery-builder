@@ -43,22 +43,19 @@ class Component(sourcery.component.Component):
     def add_build_tasks_for_host(cfg, host, component, host_group):
         host_b = host.build_cfg
         build = cfg.build.get()
+        build_b = build.build_cfg
         target = cfg.target.get()
         sysroot = cfg.sysroot.get()
         sysroot_rel = cfg.sysroot_rel.get()
         bindir_rel = cfg.bindir_rel.get()
-        inst_1_before = cfg.install_tree_path(host_b, 'toolchain-1-before')
+        inst_1_before = cfg.install_tree_path(build_b, 'toolchain-1-before')
         build_sysroot_1 = os.path.join(inst_1_before, sysroot_rel)
         bindir_1 = os.path.join(inst_1_before, bindir_rel)
-        inst_2_before = cfg.install_tree_path(host_b, 'toolchain-2-before')
+        inst_2_before = cfg.install_tree_path(build_b, 'toolchain-2-before')
         build_sysroot_2 = os.path.join(inst_2_before, sysroot_rel)
         bindir_2 = os.path.join(inst_2_before, bindir_rel)
-        build_time_tools_1 = os.path.join(
-            cfg.install_tree_path(build.build_cfg, 'toolchain-1-before'),
-            target, 'bin')
-        build_time_tools_2 = os.path.join(
-            cfg.install_tree_path(build.build_cfg, 'toolchain-2-before'),
-            target, 'bin')
+        build_time_tools_1 = os.path.join(inst_1_before, target, 'bin')
+        build_time_tools_2 = os.path.join(inst_2_before, target, 'bin')
         # glibc version hardcoding only for initial prototype.
         opts_first = ['--enable-languages=c',
                       '--disable-shared',
@@ -101,11 +98,12 @@ class Component(sourcery.component.Component):
         group.depend_install(host_b, 'gmp')
         group.depend_install(host_b, 'mpfr')
         group.depend_install(host_b, 'mpc')
-        group.depend_install(host_b, 'toolchain-2-before')
+        group.depend_install(build_b, 'toolchain-2-before')
         group.env_prepend('PATH', bindir_2)
         tree = cfg.install_tree_fstree(host_b, 'gcc')
         tree = FSTreeRemove(tree, [cfg.info_dir_rel.get()])
-        host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+        if host == build:
+            host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
         host_group.contribute_package(host, tree)
 
     @staticmethod

@@ -108,7 +108,6 @@ class Component(sourcery.component.Component):
 
     @staticmethod
     def add_build_tasks_for_other_hosts(cfg, host, component, host_group):
-        host_b = host.build_cfg
         target = cfg.target.get()
         # As for the first host, this should run in a loop over
         # multilibs.
@@ -124,7 +123,4 @@ class Component(sourcery.component.Component):
                                   os.path.join(sysroot_rel, 'usr', 'lib'))
         tree = FSTreeUnion(tree, tree_lib)
         tree = FSTreeUnion(tree, tree_usr_lib)
-        host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
-                                               tree)
-        host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
         host_group.contribute_package(host, tree)

@@ -40,15 +40,13 @@ class Component(sourcery.component.Component):
         # libraries built with the first compiler; toolchain-2 also
         # contains the second compiler.  The particular compilers
         # involved may vary depending on the configuration.  For hosts
-        # other than the first, only toolchain-2-before and
-        # toolchain-2 are needed because target libraries are only
-        # built once.
+        # other than the first, these install trees are not needed:
+        # target libraries are only built once and building some host
+        # binaries for such a host (e.g. GCC) can depend on other host
+        # binaries built for the build system (e.g. binutils) but not
+        # on other host binaries built for that host.
         host_b = host.build_cfg
         host_group.declare_implicit_install(host_b, 'toolchain-1-before')
         host_group.declare_implicit_install(host_b, 'toolchain-1')
-
-    @staticmethod
-    def add_build_tasks_for_host(cfg, host, component, host_group):
-        host_b = host.build_cfg
         host_group.declare_implicit_install(host_b, 'toolchain-2-before')
         host_group.declare_implicit_install(host_b, 'toolchain-2')

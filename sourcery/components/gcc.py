@@ -51,7 +51,15 @@ class Component(sourcery.component.Component):
         inst_1_before = cfg.install_tree_path(build_b, 'toolchain-1-before')
         build_sysroot_1 = os.path.join(inst_1_before, sysroot_rel)
         bindir_1 = os.path.join(inst_1_before, bindir_rel)
-        inst_2_before = cfg.install_tree_path(build_b, 'toolchain-2-before')
+        # Building GCC for a host other than the build system, even
+        # without building target libraries, requires GCC (configured
+        # the same way) built for the build system, because the GCC
+        # build runs the compiler for some purposes (e.g. with
+        # -dumpspecs).
+        toolchain_2_before = ('toolchain-2-before'
+                              if host == build
+                              else 'toolchain-2')
+        inst_2_before = cfg.install_tree_path(build_b, toolchain_2_before)
         build_sysroot_2 = os.path.join(inst_2_before, sysroot_rel)
         bindir_2 = os.path.join(inst_2_before, bindir_rel)
         build_time_tools_1 = os.path.join(inst_1_before, target, 'bin')
@@ -92,13 +100,18 @@ class Component(sourcery.component.Component):
             tree = cfg.install_tree_fstree(host_b, 'gcc-first')
             tree = FSTreeRemove(tree, [cfg.info_dir_rel.get()])
             host_group.contribute_implicit_install(host_b, 'toolchain-1', tree)
+            # The compiler is not needed in toolchain-2-before (which
+            # is only used to build GCC for the build system).
+        make_target = None if host == build else 'all-host'
+        install_target = 'install' if host == build else 'install-host'
         group = add_host_tool_cfg_build_tasks(
             cfg, host_b, component, host_group, name='gcc',
-            pkg_cfg_opts=opts_second)
+            pkg_cfg_opts=opts_second, make_target=make_target,
+            install_target=install_target)
         group.depend_install(host_b, 'gmp')
         group.depend_install(host_b, 'mpfr')
         group.depend_install(host_b, 'mpc')
-        group.depend_install(build_b, 'toolchain-2-before')
+        group.depend_install(build_b, toolchain_2_before)
         group.env_prepend('PATH', bindir_2)
         tree = cfg.install_tree_fstree(host_b, 'gcc')
         tree = FSTreeRemove(tree, [cfg.info_dir_rel.get()])

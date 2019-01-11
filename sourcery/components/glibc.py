@@ -80,6 +80,7 @@ class Component(sourcery.component.Component):
                    '--build=%s' % host_b.triplet,
                    '--host=%s' % target_build.triplet,
                    '--prefix=/usr']
+        cfg_cmd.extend(component.vars.configure_opts.get())
         cfg_cmd.extend(target_build.configure_vars())
         cfg_cmd.append('BUILD_CC=%s'
                        % ' '.join(host_b.tool('c-compiler')))

@@ -79,7 +79,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_cfg_build_tasks(self.relcfg, host, component, top_task, None,
                                  None, None, ['--test-option'], 'test-target',
-                                 None, True)
+                                 None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -122,7 +122,8 @@ class AutoconfTestCase(unittest.TestCase):
         task_group = add_host_cfg_build_tasks(self.relcfg, host, component,
                                               top_task, None,
                                               None, None, ['--test-option'],
-                                              'test-target', None, True)
+                                              'test-target', None, 'install',
+                                              True)
         extra_task = BuildTask(self.relcfg, task_group, 'extra')
         extra_task.add_command(['test', 'command'])
         text = top_task.makefile_text(self.build_context)
@@ -147,7 +148,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_cfg_build_tasks(self.relcfg, host, component, top_task,
                                  'name', None, None, ['--test-option'],
-                                 'test-target', None, True)
+                                 'test-target', None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/name/init',
@@ -189,7 +190,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_cfg_build_tasks(self.relcfg, host, component, top_task, None,
                                  '/other/srcdir', None, ['--test-option'],
-                                 'test-target', None, True)
+                                 'test-target', None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -210,7 +211,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_cfg_build_tasks(self.relcfg, host, component, top_task, None,
                                  None, '/cfg/prefix', ['--test-option'],
-                                 'test-target', None, True)
+                                 'test-target', None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -234,7 +235,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_cfg_build_tasks(self.relcfg, host, component, top_task, None,
                                  None, None, ['--test-option'], None, None,
-                                 True)
+                                 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -266,7 +267,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_cfg_build_tasks(self.relcfg, host, component, top_task, None,
                                  None, None, ['--test-option'], 'test-target',
-                                 None, True)
+                                 None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -297,7 +298,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('configure_opts')
         add_host_cfg_build_tasks(self.relcfg, host, component, top_task, None,
                                  None, None, ['--test-option'], 'test-target',
-                                 None, True)
+                                 None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/configure_opts/init',
@@ -330,7 +331,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_cfg_build_tasks(self.relcfg, host, component, top_task, None,
                                  None, None, ['--test-option'], 'test-target',
-                                 'make-target', True)
+                                 'make-target', 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -342,6 +343,27 @@ class AutoconfTestCase(unittest.TestCase):
         cmds_build = commands['task-end/generic/build']
         self.assertTrue(cmds_build[1].strip().endswith('$(MAKE) make-target'))
 
+    def test_add_host_cfg_build_tasks_install_target(self):
+        """Test add_host_cfg_build_tasks, target for install provided."""
+        self.setup_rc('cfg.add_component("generic")\n'
+                      'cfg.generic.version.set("test")\n')
+        top_task = BuildTask(self.relcfg, None, '', True)
+        host = self.relcfg.hosts.get()[0].build_cfg
+        component = self.relcfg.get_component('generic')
+        add_host_cfg_build_tasks(self.relcfg, host, component, top_task, None,
+                                 None, None, ['--test-option'], 'test-target',
+                                 None, 'install-test', True)
+        text = top_task.makefile_text(self.build_context)
+        deps, commands = parse_makefile(text)
+        self.assertIn('task-end/generic/init',
+                      deps['task-start/generic/configure'])
+        self.assertIn('task-end/generic/configure',
+                      deps['task-start/generic/build'])
+        self.assertIn('task-end/generic/build',
+                      deps['task-start/generic/install'])
+        cmds_inst = commands['task-end/generic/install']
+        self.assertIn('$(MAKE) -j1 install-test', cmds_inst[1])
+
     def test_add_host_cfg_build_tasks_serial(self):
         """Test add_host_cfg_build_tasks, serial build."""
         self.setup_rc('cfg.add_component("generic")\n'
@@ -351,7 +373,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_cfg_build_tasks(self.relcfg, host, component, top_task, None,
                                  None, None, ['--test-option'], 'test-target',
-                                 None, False)
+                                 None, 'install', False)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -372,7 +394,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_lib_cfg_build_tasks(self.relcfg, host, component, top_task,
                                      None, None, None, ['--test-option'], None,
-                                     True)
+                                     'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -415,7 +437,7 @@ class AutoconfTestCase(unittest.TestCase):
         task_group = add_host_lib_cfg_build_tasks(self.relcfg, host, component,
                                                   top_task, None, None, None,
                                                   ['--test-option'], None,
-                                                  True)
+                                                  'install', True)
         extra_task = BuildTask(self.relcfg, task_group, 'extra')
         extra_task.add_command(['test', 'command'])
         text = top_task.makefile_text(self.build_context)
@@ -440,7 +462,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_lib_cfg_build_tasks(self.relcfg, host, component, top_task,
                                      'name', None, None, ['--test-option'],
-                                     None, True)
+                                     None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/name/init',
@@ -482,7 +504,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_lib_cfg_build_tasks(self.relcfg, host, component, top_task,
                                      None, '/other/srcdir', None,
-                                     ['--test-option'], None, True)
+                                     ['--test-option'], None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -503,7 +525,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_lib_cfg_build_tasks(self.relcfg, host, component, top_task,
                                      None, None, '/cfg/prefix',
-                                     ['--test-option'], None, True)
+                                     ['--test-option'], None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -528,7 +550,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_lib_cfg_build_tasks(self.relcfg, host, component, top_task,
                                      None, None, None, ['--test-option'], None,
-                                     True)
+                                     'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -559,7 +581,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('configure_opts')
         add_host_lib_cfg_build_tasks(self.relcfg, host, component, top_task,
                                      None, None, None, ['--test-option'], None,
-                                     True)
+                                     'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/configure_opts/init',
@@ -592,7 +614,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_lib_cfg_build_tasks(self.relcfg, host, component, top_task,
                                      None, None, None, ['--test-option'],
-                                     'make-target', True)
+                                     'make-target', 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -604,6 +626,27 @@ class AutoconfTestCase(unittest.TestCase):
         cmds_build = commands['task-end/generic/build']
         self.assertTrue(cmds_build[1].strip().endswith('$(MAKE) make-target'))
 
+    def test_add_host_lib_cfg_build_tasks_install_target(self):
+        """Test add_host_lib_cfg_build_tasks, target for install provided."""
+        self.setup_rc('cfg.add_component("generic")\n'
+                      'cfg.generic.version.set("test")\n')
+        top_task = BuildTask(self.relcfg, None, '', True)
+        host = self.relcfg.hosts.get()[0].build_cfg
+        component = self.relcfg.get_component('generic')
+        add_host_lib_cfg_build_tasks(self.relcfg, host, component, top_task,
+                                     None, None, None, ['--test-option'], None,
+                                     'install-test', True)
+        text = top_task.makefile_text(self.build_context)
+        deps, commands = parse_makefile(text)
+        self.assertIn('task-end/generic/init',
+                      deps['task-start/generic/configure'])
+        self.assertIn('task-end/generic/configure',
+                      deps['task-start/generic/build'])
+        self.assertIn('task-end/generic/build',
+                      deps['task-start/generic/install'])
+        cmds_inst = commands['task-end/generic/install']
+        self.assertIn('$(MAKE) -j1 install-test', cmds_inst[1])
+
     def test_add_host_lib_cfg_build_tasks_serial(self):
         """Test add_host_lib_cfg_build_tasks, serial build."""
         self.setup_rc('cfg.add_component("generic")\n'
@@ -613,7 +656,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_lib_cfg_build_tasks(self.relcfg, host, component, top_task,
                                      None, None, None, ['--test-option'], None,
-                                     False)
+                                     'install', False)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -634,7 +677,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
                                       None, None, ['--test-option'], '', None,
-                                      True)
+                                      'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -676,7 +719,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
                                       None, None, ['--test-option'],
-                                      'test-target', None, True)
+                                      'test-target', None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -698,7 +741,7 @@ class AutoconfTestCase(unittest.TestCase):
         task_group = add_host_tool_cfg_build_tasks(self.relcfg, host,
                                                    component, top_task, None,
                                                    None, ['--test-option'], '',
-                                                   None, True)
+                                                   None, 'install', True)
         extra_task = BuildTask(self.relcfg, task_group, 'extra')
         extra_task.add_command(['test', 'command'])
         text = top_task.makefile_text(self.build_context)
@@ -723,7 +766,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
                                       'name', None, ['--test-option'], '',
-                                      None, True)
+                                      None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/name/init',
@@ -765,7 +808,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
                                       None, '/other/srcdir', ['--test-option'],
-                                      '', None, True)
+                                      '', None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -787,7 +830,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
                                       None, None, ['--test-option'], '', None,
-                                      True)
+                                      'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -811,7 +854,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
                                       None, None, ['--test-option'], None,
-                                      None, True)
+                                      None, 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -842,7 +885,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
                                       None, None, ['--test-option'], '', None,
-                                      True)
+                                      'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -874,7 +917,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('configure_opts')
         add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
                                       None, None, ['--test-option'], '', None,
-                                      True)
+                                      'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/configure_opts/init',
@@ -907,7 +950,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
                                       None, None, ['--test-option'], '',
-                                      'make-target', True)
+                                      'make-target', 'install', True)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',
@@ -919,6 +962,27 @@ class AutoconfTestCase(unittest.TestCase):
         cmds_build = commands['task-end/generic/build']
         self.assertTrue(cmds_build[1].strip().endswith('$(MAKE) make-target'))
 
+    def test_add_host_tool_cfg_build_tasks_install_target(self):
+        """Test add_host_tool_cfg_build_tasks, target for install provided."""
+        self.setup_rc('cfg.add_component("generic")\n'
+                      'cfg.generic.version.set("test")\n')
+        top_task = BuildTask(self.relcfg, None, '', True)
+        host = self.relcfg.hosts.get()[0].build_cfg
+        component = self.relcfg.get_component('generic')
+        add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
+                                      None, None, ['--test-option'], '', None,
+                                      'install-test', True)
+        text = top_task.makefile_text(self.build_context)
+        deps, commands = parse_makefile(text)
+        self.assertIn('task-end/generic/init',
+                      deps['task-start/generic/configure'])
+        self.assertIn('task-end/generic/configure',
+                      deps['task-start/generic/build'])
+        self.assertIn('task-end/generic/build',
+                      deps['task-start/generic/install'])
+        cmds_inst = commands['task-end/generic/install']
+        self.assertIn('$(MAKE) -j1 install-test', cmds_inst[1])
+
     def test_add_host_tool_cfg_build_tasks_serial(self):
         """Test add_host_tool_cfg_build_tasks, serial build."""
         self.setup_rc('cfg.add_component("generic")\n'
@@ -928,7 +992,7 @@ class AutoconfTestCase(unittest.TestCase):
         component = self.relcfg.get_component('generic')
         add_host_tool_cfg_build_tasks(self.relcfg, host, component, top_task,
                                       None, None, ['--test-option'], '', None,
-                                      False)
+                                      'install', False)
         text = top_task.makefile_text(self.build_context)
         deps, commands = parse_makefile(text)
         self.assertIn('task-end/generic/init',

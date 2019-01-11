@@ -29,7 +29,7 @@ __all__ = ['add_host_cfg_build_tasks', 'add_host_lib_cfg_build_tasks',
 
 def add_host_cfg_build_tasks(relcfg, host, component, parent, name, srcdir,
                              prefix, pkg_cfg_opts, target, make_target,
-                             parallel):
+                             install_target, parallel):
     """Add and return a group of tasks using configure / make / make install.
 
     The parent task passed is the main task group for the host, or any
@@ -49,7 +49,8 @@ def add_host_cfg_build_tasks(relcfg, host, component, parent, name, srcdir,
     passed unless target is None.  Any configure options from the
     configure_opts variable and component hook are added
     automatically.  If make_target is not None, it is the target
-    passed to make for the main build step.
+    passed to make for the main build step; install_target likewise
+    specifies the target for the install step.
 
     If additional steps are required after installation, the caller
     should add a postinstall task or tasks to the group returned.
@@ -98,7 +99,7 @@ def add_host_cfg_build_tasks(relcfg, host, component, parent, name, srcdir,
         build_cmd.append(make_target)
     build_task.add_make(build_cmd, objdir)
     install_task = BuildTask(relcfg, task_group, 'install')
-    install_cmd = ['-j1', 'install']
+    install_cmd = ['-j1', install_target]
     if destdir is not None:
         install_cmd.append('DESTDIR=%s' % destdir)
     install_task.add_make(install_cmd, objdir)
@@ -107,7 +108,8 @@ def add_host_cfg_build_tasks(relcfg, host, component, parent, name, srcdir,
 
 def add_host_lib_cfg_build_tasks(relcfg, host, component, parent, name=None,
                                  srcdir=None, prefix=None, pkg_cfg_opts=(),
-                                 make_target=None, parallel=True):
+                                 make_target=None, install_target='install',
+                                 parallel=True):
     """Add and return a group of tasks using configure / make / make
     install, for a host library.
 
@@ -119,12 +121,13 @@ def add_host_lib_cfg_build_tasks(relcfg, host, component, parent, name=None,
     cfg_opts.extend(pkg_cfg_opts)
     return add_host_cfg_build_tasks(relcfg, host, component, parent, name,
                                     srcdir, prefix, cfg_opts, None,
-                                    make_target, parallel)
+                                    make_target, install_target, parallel)
 
 
 def add_host_tool_cfg_build_tasks(relcfg, host, component, parent, name=None,
                                   srcdir=None, pkg_cfg_opts=(), target='',
-                                  make_target=None, parallel=True):
+                                  make_target=None, install_target='install',
+                                  parallel=True):
     """Add and return a group of tasks using configure / make / make
     install, for a host tool to be installed and distributed.
 
@@ -139,4 +142,4 @@ def add_host_tool_cfg_build_tasks(relcfg, host, component, parent, name=None,
     return add_host_cfg_build_tasks(relcfg, host, component, parent, name,
                                     srcdir, relcfg.installdir.get(),
                                     pkg_cfg_opts, target, make_target,
-                                    parallel)
+                                    install_target, parallel)

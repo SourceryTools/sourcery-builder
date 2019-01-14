@@ -156,6 +156,50 @@ class MapFSTree:
                         del ret.name_map[subdir]
         return ret
 
+    def extract(self, paths):
+        """Return a MapFSTree like this one but with only the given paths.
+
+        Paths may be files, directories or symlinks; contents of
+        directories are included recursively; symlinks are not
+        dereferenced, so e.g. 'foo/*' where foo is a symlink does not
+        match anything.  fnmatch patterns may be used to match
+        individual components.  Empty directories are only included in
+        the result where they match one of the given paths.
+
+        """
+        if not self.is_dir:
+            self.context.error('extracting paths from non-directory')
+        for path in paths:
+            if _invalid_path(path):
+                self.context.error('invalid path to extract: %s' % path)
+        ret = self._expand(True)
+        keep_sub = set()
+        sub_paths = collections.defaultdict(set)
+        for path in paths:
+            if '/' in path:
+                p_dir, p_rest = path.split('/', maxsplit=1)
+                p_dir_exp = fnmatch.filter(ret.name_map.keys(), p_dir)
+                for subdir in p_dir_exp:
+                    sub_paths[subdir].add(p_rest)
+            else:
+                p_exp = fnmatch.filter(ret.name_map.keys(), path)
+                keep_sub.update(p_exp)
+        del_sub = set()
+        for subdir in ret.name_map:
+            if subdir in keep_sub:
+                pass
+            elif subdir in sub_paths and ret.name_map[subdir].is_dir:
+                sub = ret.name_map[subdir].extract(sorted(sub_paths[subdir]))
+                if sub.name_map:
+                    ret.name_map[subdir] = sub
+                else:
+                    del_sub.add(subdir)
+            else:
+                del_sub.add(subdir)
+        for subdir in del_sub:
+            del ret.name_map[subdir]
+        return ret
+
 
 class MapFSTreeCopy(MapFSTree):
     """A MapFSTreeCopy constructs a filesystem object from a path."""

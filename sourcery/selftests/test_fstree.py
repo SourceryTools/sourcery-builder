@@ -367,6 +367,80 @@ class MapFSTreeTestCase(unittest.TestCase):
                                'invalid path to remove: ',
                                tree.remove, [''])
 
+    def test_extract(self):
+        """Test extraction of paths from MapFSTree objects."""
+        create_files(self.indir, ['a1', 'a1/b1', 'a1/b2', 'a2', 'a2/c', 'd'],
+                     {'ax': 'file ax', 'a1/bf': 'file a1/bf',
+                      'a1/b1/c': 'file a1/b1/c', 'a2/c/b': 'file a2/c/b',
+                      'df': 'file df', 'e': 'file e'},
+                     {'dead-symlink': 'bad', 'a-dir-symlink': 'a1'})
+        tree = MapFSTreeCopy(self.context, self.indir)
+        tree_ex = tree.extract(['a*/b*', 'd*', '*z'])
+        tree_ex.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'a1', 'a1/b1', 'a1/b2', 'd'},
+                          {'a1/bf': 'file a1/bf', 'a1/b1/c': 'file a1/b1/c',
+                           'df': 'file df'},
+                          {'dead-symlink': 'bad'}))
+        shutil.rmtree(self.outdir)
+        tree_ex = tree.extract(['a*/b*', 'a*/c*'])
+        tree_ex.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'a1', 'a1/b1', 'a1/b2', 'a2', 'a2/c'},
+                          {'a1/bf': 'file a1/bf', 'a1/b1/c': 'file a1/b1/c',
+                           'a2/c/b': 'file a2/c/b'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        tree_ex = tree.extract(['*/*/c'])
+        tree_ex.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'a1', 'a1/b1'},
+                          {'a1/b1/c': 'file a1/b1/c'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        tree.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'a1', 'a1/b1', 'a1/b2', 'a2', 'a2/c', 'd'},
+                          {'ax': 'file ax', 'a1/bf': 'file a1/bf',
+                           'a1/b1/c': 'file a1/b1/c', 'a2/c/b': 'file a2/c/b',
+                           'df': 'file df', 'e': 'file e'},
+                          {'dead-symlink': 'bad', 'a-dir-symlink': 'a1'}))
+
+    def test_extract_errors(self):
+        """Test errors extracting paths from MapFSTree objects."""
+        create_files(self.indir,
+                     [],
+                     {'f': 'file f'},
+                     {'link': 'target'})
+        tree_f = MapFSTreeCopy(self.context, os.path.join(self.indir, 'f'))
+        self.assertRaisesRegex(ScriptError,
+                               r'extracting paths from non-directory',
+                               tree_f.extract, [])
+        tree_link = MapFSTreeCopy(self.context,
+                                  os.path.join(self.indir, 'link'))
+        self.assertRaisesRegex(ScriptError,
+                               r'extracting paths from non-directory',
+                               tree_link.extract, [])
+        tree = MapFSTreeMap(self.context, {})
+        self.assertRaisesRegex(ScriptError,
+                               r'invalid path to extract: \.',
+                               tree.extract, ['.'])
+        self.assertRaisesRegex(ScriptError,
+                               r'invalid path to extract: \.\.',
+                               tree.extract, ['..'])
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: foo//bar',
+                               tree.extract, ['foo//bar'])
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: /foo',
+                               tree.extract, ['/foo'])
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: bar/',
+                               tree.extract, ['bar/'])
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: ',
+                               tree.extract, [''])
+
 
 class FSTreeTestCase(unittest.TestCase):
 

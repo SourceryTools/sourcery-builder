@@ -27,7 +27,7 @@ import stat
 
 __all__ = ['MapFSTree', 'MapFSTreeCopy', 'MapFSTreeMap', 'FSTree',
            'FSTreeCopy', 'FSTreeEmpty', 'FSTreeMove', 'FSTreeRemove',
-           'FSTreeUnion']
+           'FSTreeExtract', 'FSTreeUnion']
 
 
 def _invalid_path(path):
@@ -359,6 +359,27 @@ class FSTreeRemove(FSTree):
 
     def export_map(self):
         return self.other.export_map().remove(self.paths)
+
+
+class FSTreeExtract(FSTree):
+    """An FSTreeExtract represents an FSTree with only the given paths kept."""
+
+    def __init__(self, other, paths):
+        """Initialize an FSTreeExtract object.
+
+        Paths to be kept are interpreted as for MapFSTree.extract.
+
+        """
+        self.context = other.context
+        for path in paths:
+            if _invalid_path(path):
+                self.context.error('invalid path to extract: %s' % path)
+        self.other = other
+        self.install_trees = other.install_trees
+        self.paths = paths
+
+    def export_map(self):
+        return self.other.export_map().extract(self.paths)
 
 
 class FSTreeUnion(FSTree):

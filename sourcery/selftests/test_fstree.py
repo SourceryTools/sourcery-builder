@@ -240,13 +240,23 @@ class MapFSTreeTestCase(unittest.TestCase):
                            'x/foo/x': 'file b/foo/x'},
                           {'x/dead-symlink': 'bad', 'x/file-symlink': 'a',
                            'x/dir-symlink': 'foo/bar'}))
+        # Test duplicate files or symlinks when allowed.
+        tree_a = MapFSTreeCopy(self.context, os.path.join(self.indir, 'a'))
+        tree_u = tree_a.union(tree_a, '', True)
+        shutil.rmtree(self.outdir)
+        tree_u.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'foo', 'foo/bar'},
+                          {'a': 'file a/a', 'foo/b': 'file a/foo/b'},
+                          {'dead-symlink': 'bad', 'file-symlink': 'a',
+                           'dir-symlink': 'foo/bar'}))
 
     def test_union_errors(self):
         """Test errors from unions of MapFSTree objects."""
         create_files(self.indir,
-                     ['a', 'a/x', 'b', 'c'],
-                     {'b/x': 'file b/x'},
-                     {'c/x': 'target'})
+                     ['a', 'a/x', 'b', 'c', 'd', 'e', 'f'],
+                     {'b/x': 'file b/x', 'd/x': 'file d/x', 'f/x': 'file b/x'},
+                     {'c/x': 'target', 'e/x': 'target2'})
         tree_a = MapFSTreeCopy(self.context, os.path.join(self.indir, 'a'))
         tree_b = MapFSTreeCopy(self.context, os.path.join(self.indir, 'b'))
         tree_c = MapFSTreeCopy(self.context, os.path.join(self.indir, 'c'))
@@ -274,6 +284,44 @@ class MapFSTreeTestCase(unittest.TestCase):
         self.assertRaisesRegex(ScriptError,
                                'non-directory involved in union operation: x',
                                tree_c.union, tree_c, '')
+        # Invalid cases with duplicates allowed.
+        self.assertRaisesRegex(ScriptError,
+                               'non-directory involved in union operation: x',
+                               tree_a.union, tree_b, '', True)
+        self.assertRaisesRegex(ScriptError,
+                               'non-directory involved in union operation: x',
+                               tree_a.union, tree_c, '', True)
+        self.assertRaisesRegex(ScriptError,
+                               'non-directory involved in union operation: x',
+                               tree_b.union, tree_a, '', True)
+        self.assertRaisesRegex(ScriptError,
+                               'inconsistent contents in union operation: x',
+                               tree_b.union, tree_c, '', True)
+        self.assertRaisesRegex(ScriptError,
+                               'non-directory involved in union operation: x',
+                               tree_c.union, tree_a, '', True)
+        self.assertRaisesRegex(ScriptError,
+                               'inconsistent contents in union operation: x',
+                               tree_c.union, tree_b, '', True)
+        # Invalid with duplicates allowed because of different contents.
+        tree_d = MapFSTreeCopy(self.context, os.path.join(self.indir, 'd'))
+        tree_e = MapFSTreeCopy(self.context, os.path.join(self.indir, 'e'))
+        self.assertRaisesRegex(ScriptError,
+                               'inconsistent contents in union operation: x',
+                               tree_b.union, tree_d, '', True)
+        self.assertRaisesRegex(ScriptError,
+                               'inconsistent contents in union operation: x',
+                               tree_c.union, tree_e, '', True)
+        # Invalid with duplicates allowed because of different file
+        # permissions.
+        tree_f = MapFSTreeCopy(self.context, os.path.join(self.indir, 'f'))
+        # OK before permission change.
+        tree_b.union(tree_f, '', True)
+        os.chmod(os.path.join(self.indir, 'b', 'x'), stat.S_IRUSR)
+        os.chmod(os.path.join(self.indir, 'f', 'x'), stat.S_IRWXU)
+        self.assertRaisesRegex(ScriptError,
+                               'inconsistent contents in union operation: x',
+                               tree_b.union, tree_f, '', True)
 
     def test_remove(self):
         """Test removal of paths from MapFSTree objects."""

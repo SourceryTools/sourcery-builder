@@ -93,25 +93,45 @@ class MapFSTree:
         """
         raise NotImplementedError
 
-    def union(self, other, name):
+    def _contents(self):
+        """Return a tuple that represents the contents of this object.
+
+        The tuples are suitable for comparison purposes but not
+        otherwise specified.  This may only be called for regular
+        files and symlinks, not for directories.
+
+        """
+        raise NotImplementedError
+
+    def union(self, other, name, allow_duplicate_files=False):
         """Return the union of this object with another MapFSTree.
 
-        Directories may appear in both objects.  Regular files and
-        symlinks may appear in only one, not both, even with identical
-        contents.  The specified 'name' is for use in diagnostics
-        related to this issue.
+        Directories may appear in both objects.  If
+        allow_duplicate_files is False (the default), regular files
+        and symlinks may appear in only one, not both, even with
+        identical contents; if it is True, regular files and symlinks
+        may appear in both provided the contents, and the permissions
+        for regular files, are identical.  The specified 'name' is for
+        use in diagnostics related to this issue.
 
         """
         if not self.is_dir or not other.is_dir:
-            self.context.error('non-directory involved in union operation: %s'
-                               % name)
+            if allow_duplicate_files and not self.is_dir and not other.is_dir:
+                if self._contents() == other._contents():
+                    return self
+                else:
+                    self.context.error('inconsistent contents in union '
+                                       'operation: %s' % name)
+            else:
+                self.context.error('non-directory involved in union '
+                                   'operation: %s' % name)
         ret = self._expand(True)
         other = other._expand(False)
         for filename in other.name_map:
             if filename in ret.name_map:
                 sub_name = os.path.join(name, filename) if name else filename
                 ret.name_map[filename] = ret.name_map[filename].union(
-                    other.name_map[filename], sub_name)
+                    other.name_map[filename], sub_name, allow_duplicate_files)
             else:
                 ret.name_map[filename] = other.name_map[filename]
         return ret
@@ -231,6 +251,16 @@ class MapFSTreeCopy(MapFSTree):
                     for name in os.listdir(self.path)}
         return MapFSTreeMap(self.context, name_map)
 
+    def _contents(self):
+        if self.is_dir:
+            self.context.error('_contents called for directory %s'
+                               % self.path)
+        mode = os.stat(self.path, follow_symlinks=False).st_mode
+        if stat.S_ISLNK(mode):
+            return ('symlink', os.readlink(self.path))
+        with open(self.path, 'rb') as file:
+            return ('file', file.read(), mode)
+
 
 class MapFSTreeMap(MapFSTree):
     """A MapFSTreeMap maps names in a directory to MapFSTree objects."""
@@ -254,6 +284,9 @@ class MapFSTreeMap(MapFSTree):
             return MapFSTreeMap(self.context, self.name_map)
         else:
             return self
+
+    def _contents(self):
+        self.context.error('_contents called for directory')
 
 
 class FSTree:

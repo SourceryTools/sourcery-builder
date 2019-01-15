@@ -22,7 +22,7 @@ import os.path
 
 from sourcery.autoconf import add_host_tool_cfg_build_tasks
 import sourcery.component
-from sourcery.fstree import FSTreeRemove
+from sourcery.fstree import FSTreeRemove, FSTreeExtract
 
 __all__ = ['Component']
 
@@ -118,6 +118,26 @@ class Component(sourcery.component.Component):
         if host == build:
             host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
         host_group.contribute_package(host, tree)
+        if host != build:
+            # Libraries built for the build system, and other files
+            # installed with those libraries, are reused for other
+            # hosts.
+            installdir_rel = cfg.installdir_rel.get()
+            tree_libs = cfg.install_tree_fstree(build_b, 'gcc')
+            tree_libs = FSTreeExtract(
+                tree_libs,
+                ['%s/%s/include/c++' % (installdir_rel, target),
+                 '%s/%s/lib*' % (installdir_rel, target),
+                 '%s/lib/gcc/%s/*' % (installdir_rel, target),
+                 '%s/share/gcc-*' % installdir_rel,
+                 '%s/share/info/lib*' % installdir_rel,
+                 '%s/share/locale/*/*/lib*' % installdir_rel])
+            tree_libs = FSTreeRemove(
+                tree_libs,
+                ['%s/lib/gcc/%s/*/include' % (installdir_rel, target),
+                 '%s/lib/gcc/%s/*/include-fixed' % (installdir_rel, target),
+                 '%s/lib/gcc/%s/*/install-tools' % (installdir_rel, target)])
+            host_group.contribute_package(host, tree_libs)
 
     @staticmethod
     def configure_opts(cfg, host):

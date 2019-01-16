@@ -136,7 +136,8 @@ class Component(sourcery.component.Component):
                 tree_libs,
                 ['%s/lib/gcc/%s/*/include' % (installdir_rel, target),
                  '%s/lib/gcc/%s/*/include-fixed' % (installdir_rel, target),
-                 '%s/lib/gcc/%s/*/install-tools' % (installdir_rel, target)])
+                 '%s/lib/gcc/%s/*/install-tools' % (installdir_rel, target),
+                 '%s/lib/gcc/%s/*/plugin' % (installdir_rel, target)])
             host_group.contribute_package(host, tree_libs)
 
     @staticmethod

@@ -22,7 +22,7 @@ import os.path
 
 from sourcery.autoconf import add_host_tool_cfg_build_tasks
 import sourcery.component
-from sourcery.fstree import FSTreeRemove, FSTreeExtract
+from sourcery.fstree import FSTreeRemove, FSTreeExtract, FSTreeUnion
 
 __all__ = ['Component']
 
@@ -117,15 +117,19 @@ class Component(sourcery.component.Component):
         tree = FSTreeRemove(tree, [cfg.info_dir_rel.get()])
         if host == build:
             host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
-        host_group.contribute_package(host, tree)
         if host != build:
             # Libraries built for the build system, and other files
             # installed with those libraries, are reused for other
-            # hosts.
+            # hosts.  Headers in libsubdir/include are a special case:
+            # some are installed from the gcc/ directory, so for all
+            # hosts, while others are installed from library
+            # directories, so only from the build system.  Thus,
+            # extract the two sets of headers and form a union for
+            # them allowing duplicates with identical contents.
             installdir_rel = cfg.installdir_rel.get()
-            tree_libs = cfg.install_tree_fstree(build_b, 'gcc')
+            tree_build = cfg.install_tree_fstree(build_b, 'gcc')
             tree_libs = FSTreeExtract(
-                tree_libs,
+                tree_build,
                 ['%s/%s/include/c++' % (installdir_rel, target),
                  '%s/%s/lib*' % (installdir_rel, target),
                  '%s/lib/gcc/%s/*' % (installdir_rel, target),
@@ -138,7 +142,21 @@ class Component(sourcery.component.Component):
                  '%s/lib/gcc/%s/*/include-fixed' % (installdir_rel, target),
                  '%s/lib/gcc/%s/*/install-tools' % (installdir_rel, target),
                  '%s/lib/gcc/%s/*/plugin' % (installdir_rel, target)])
+            tree_libsubdir_include_build = FSTreeExtract(
+                tree_build,
+                ['%s/lib/gcc/%s/*/include' % (installdir_rel, target)])
+            tree_libsubdir_include_host = FSTreeExtract(
+                tree,
+                ['%s/lib/gcc/%s/*/include' % (installdir_rel, target)])
+            tree_libsubdir_include = FSTreeUnion(tree_libsubdir_include_build,
+                                                 tree_libsubdir_include_host,
+                                                 True)
+            tree = FSTreeRemove(
+                tree,
+                ['%s/lib/gcc/%s/*/include' % (installdir_rel, target)])
             host_group.contribute_package(host, tree_libs)
+            host_group.contribute_package(host, tree_libsubdir_include)
+        host_group.contribute_package(host, tree)
 
     @staticmethod
     def configure_opts(cfg, host):

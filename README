@@ -38,7 +38,9 @@ prototype purposes.  Some key missing pieces are:
   with reST formatting to produce overall documentation with Sphinx).
 
 * Features needed for building for more hosts than just the build
-  system.
+  system, if any host uses native toolchain directory arrangements, or
+  if one of the later hosts is the toolchain target and needs to build
+  using the tools built for the build system.
 
 * Features needed for building the same component more than once for
   the same host in different configurations (e.g. an offload

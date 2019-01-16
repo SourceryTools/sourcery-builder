@@ -693,3 +693,11 @@ class FSTreeTestCase(unittest.TestCase):
                            'foo/c': 'file foo/c'},
                           {'dead-symlink': 'bad', 'file-symlink': 'a',
                            'dir-symlink': 'foo/bar'}))
+        tree = FSTreeUnion(ctree1, ctree1, True)
+        shutil.rmtree(self.outdir)
+        tree.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'foo', 'foo/bar'},
+                          {'a': 'file a', 'foo/b': 'file foo/b'},
+                          {'dead-symlink': 'bad', 'file-symlink': 'a',
+                           'dir-symlink': 'foo/bar'}))

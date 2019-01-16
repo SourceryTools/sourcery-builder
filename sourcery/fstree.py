@@ -423,12 +423,14 @@ class FSTreeUnion(FSTree):
 
     """
 
-    def __init__(self, first, second):
+    def __init__(self, first, second, allow_duplicate_files=False):
         """Initialize an FSTreeUnion object."""
         self.context = first.context
         self.first = first
         self.second = second
+        self.allow_duplicate_files = allow_duplicate_files
         self.install_trees = first.install_trees | second.install_trees
 
     def export_map(self):
-        return self.first.export_map().union(self.second.export_map(), '')
+        return self.first.export_map().union(self.second.export_map(), '',
+                                             self.allow_duplicate_files)

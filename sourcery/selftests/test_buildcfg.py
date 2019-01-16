@@ -98,6 +98,15 @@ class BuildCfgTestCase(unittest.TestCase):
         cfg = BuildCfg(self.context, 'x86_64-pc-linux-gnu')
         self.assertFalse(cfg.is_windows())
 
+    def test_use_libiconv(self):
+        """Test the use_libiconv method."""
+        cfg = BuildCfg(self.context, 'i686-mingw32')
+        self.assertTrue(cfg.use_libiconv())
+        cfg = BuildCfg(self.context, 'x86_64-w64-mingw32')
+        self.assertTrue(cfg.use_libiconv())
+        cfg = BuildCfg(self.context, 'x86_64-pc-linux-gnu')
+        self.assertFalse(cfg.use_libiconv())
+
     def test_tool_basic(self):
         """Test basic use of the tool method."""
         cfg = BuildCfg(self.context, 'aarch64-linux-gnu')

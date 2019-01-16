@@ -126,6 +126,10 @@ class BuildCfg:
         # predicates as this make sense.
         return '-mingw' in self.triplet
 
+    def use_libiconv(self):
+        """Return whether to use libiconv on this system."""
+        return self.is_windows()
+
     def tool(self, name):
         """Return the full name and arguments for the specified tool.
 

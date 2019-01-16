@@ -1,6 +1,6 @@
-# Initialize sourcery.selftests.components package.
+# sourcery-builder no_source_type component for testing.
 
-# Copyright 2018-2019 Mentor Graphics Corporation.
+# Copyright 2019 Mentor Graphics Corporation.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as
@@ -16,11 +16,12 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder selftests.components package."""
+"""sourcery-builder no_source_type component for testing."""
 
-__all__ = ['add_rel_cfg_vars', 'build_fail_cd', 'build_fail_command',
-           'build_fail_python', 'build_install_tree', 'build_log',
-           'build_package', 'build_src_closed', 'build_src_open', 'build_test',
-           'configure_opts', 'files_to_touch', 'files_to_touch_glob',
-           'generic', 'no_add_rel_cfg_vars', 'no_source_type', 'postcheckout',
-           'zz_no_source']
+import sourcery.component
+
+__all__ = ['Component']
+
+
+class Component(sourcery.component.Component):
+    """no_source_type component implementation."""

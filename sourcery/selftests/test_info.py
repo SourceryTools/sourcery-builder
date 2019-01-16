@@ -71,6 +71,7 @@ class InfoTextTestCase(unittest.TestCase):
         # Test a config with components.
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1.23")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.add_component("zz_no_source")\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')

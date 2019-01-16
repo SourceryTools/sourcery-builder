@@ -73,7 +73,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_cfg_build_tasks(self):
         """Test add_host_cfg_build_tasks."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -115,7 +116,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_cfg_build_tasks_return(self):
         """Test add_host_cfg_build_tasks, returned task group."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -142,7 +144,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_cfg_build_tasks_name(self):
         """Test add_host_cfg_build_tasks, alternate name provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -184,7 +187,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_cfg_build_tasks_srcdir(self):
         """Test add_host_cfg_build_tasks, alternate srcdir provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -205,7 +209,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_cfg_build_tasks_prefix(self):
         """Test add_host_cfg_build_tasks, prefix provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -229,7 +234,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_cfg_build_tasks_notarget(self):
         """Test add_host_cfg_build_tasks, no configured target."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -261,6 +267,7 @@ class AutoconfTestCase(unittest.TestCase):
         """Test add_host_cfg_build_tasks, configure_opts variable."""
         self.setup_rc('cfg.add_component("generic")\n'
                       'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n'
                       'cfg.generic.configure_opts.set(["--abc", "--def"])\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
@@ -292,7 +299,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_cfg_build_tasks_cfg_opts_component(self):
         """Test add_host_cfg_build_tasks, configure_opts from component."""
         self.setup_rc('cfg.add_component("configure_opts")\n'
-                      'cfg.configure_opts.version.set("test")\n')
+                      'cfg.configure_opts.version.set("test")\n'
+                      'cfg.configure_opts.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('configure_opts')
@@ -325,7 +333,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_cfg_build_tasks_make_target(self):
         """Test add_host_cfg_build_tasks, target for make provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -346,7 +355,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_cfg_build_tasks_install_target(self):
         """Test add_host_cfg_build_tasks, target for install provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -367,7 +377,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_cfg_build_tasks_serial(self):
         """Test add_host_cfg_build_tasks, serial build."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -388,7 +399,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_lib_cfg_build_tasks(self):
         """Test add_host_lib_cfg_build_tasks."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -430,7 +442,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_lib_cfg_build_tasks_return(self):
         """Test add_host_lib_cfg_build_tasks, returned task group."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -456,7 +469,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_lib_cfg_build_tasks_name(self):
         """Test add_host_lib_cfg_build_tasks, alternate name provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -498,7 +512,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_lib_cfg_build_tasks_srcdir(self):
         """Test add_host_lib_cfg_build_tasks, alternate srcdir provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -519,7 +534,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_lib_cfg_build_tasks_prefix(self):
         """Test add_host_lib_cfg_build_tasks, prefix provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -544,6 +560,7 @@ class AutoconfTestCase(unittest.TestCase):
         """Test add_host_lib_cfg_build_tasks, configure_opts variable."""
         self.setup_rc('cfg.add_component("generic")\n'
                       'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n'
                       'cfg.generic.configure_opts.set(["--abc", "--def"])\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
@@ -575,7 +592,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_lib_cfg_build_tasks_cfg_opts_component(self):
         """Test add_host_lib_cfg_build_tasks, configure_opts from component."""
         self.setup_rc('cfg.add_component("configure_opts")\n'
-                      'cfg.configure_opts.version.set("test")\n')
+                      'cfg.configure_opts.version.set("test")\n'
+                      'cfg.configure_opts.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('configure_opts')
@@ -608,7 +626,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_lib_cfg_build_tasks_make_target(self):
         """Test add_host_lib_cfg_build_tasks, target for make provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -629,7 +648,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_lib_cfg_build_tasks_install_target(self):
         """Test add_host_lib_cfg_build_tasks, target for install provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -650,7 +670,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_lib_cfg_build_tasks_serial(self):
         """Test add_host_lib_cfg_build_tasks, serial build."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -671,7 +692,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_tool_cfg_build_tasks(self):
         """Test add_host_tool_cfg_build_tasks."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -713,7 +735,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_tool_cfg_build_tasks_target(self):
         """Test add_host_tool_cfg_build_tasks, explicit target specified."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -734,7 +757,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_tool_cfg_build_tasks_return(self):
         """Test add_host_tool_cfg_build_tasks, returned task group."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -760,7 +784,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_tool_cfg_build_tasks_name(self):
         """Test add_host_tool_cfg_build_tasks, alternate name provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -802,7 +827,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_tool_cfg_build_tasks_srcdir(self):
         """Test add_host_tool_cfg_build_tasks, alternate srcdir provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -824,6 +850,7 @@ class AutoconfTestCase(unittest.TestCase):
         """Test add_host_tool_cfg_build_tasks, prefix provided in config."""
         self.setup_rc('cfg.add_component("generic")\n'
                       'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n'
                       'cfg.installdir.set("/some/where")')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
@@ -848,7 +875,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_tool_cfg_build_tasks_notarget(self):
         """Test add_host_tool_cfg_build_tasks, no configured target."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -879,6 +907,7 @@ class AutoconfTestCase(unittest.TestCase):
         """Test add_host_tool_cfg_build_tasks, configure_opts variable."""
         self.setup_rc('cfg.add_component("generic")\n'
                       'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n'
                       'cfg.generic.configure_opts.set(["--abc", "--def"])\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
@@ -911,7 +940,8 @@ class AutoconfTestCase(unittest.TestCase):
         """Test add_host_tool_cfg_build_tasks, configure_opts from component.
         """
         self.setup_rc('cfg.add_component("configure_opts")\n'
-                      'cfg.configure_opts.version.set("test")\n')
+                      'cfg.configure_opts.version.set("test")\n'
+                      'cfg.configure_opts.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('configure_opts')
@@ -944,7 +974,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_tool_cfg_build_tasks_make_target(self):
         """Test add_host_tool_cfg_build_tasks, target for make provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -965,7 +996,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_tool_cfg_build_tasks_install_target(self):
         """Test add_host_tool_cfg_build_tasks, target for install provided."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')
@@ -986,7 +1018,8 @@ class AutoconfTestCase(unittest.TestCase):
     def test_add_host_tool_cfg_build_tasks_serial(self):
         """Test add_host_tool_cfg_build_tasks, serial build."""
         self.setup_rc('cfg.add_component("generic")\n'
-                      'cfg.generic.version.set("test")\n')
+                      'cfg.generic.version.set("test")\n'
+                      'cfg.generic.vc.set(TarVC("dummy"))\n')
         top_task = BuildTask(self.relcfg, None, '', True)
         host = self.relcfg.hosts.get()[0].build_cfg
         component = self.relcfg.get_component('generic')

@@ -935,9 +935,20 @@ class ReleaseConfig:
             c_in_cfg = ComponentInConfig(component, component, c_vars, cls)
             self._components_full.append(c_in_cfg)
             self._components_full_byname[component] = c_in_cfg
-            if c_vars.source_type.get() != 'none':
+            source_type = c_vars.source_type.get()
+            if source_type is None:
+                self.context.error('no source type specified for %s'
+                                   % component)
+            if source_type != 'none':
+                version = c_vars.version.get()
+                if version is None:
+                    self.context.error('no version specified for %s'
+                                       % component)
+                if c_vars.vc.get() is None:
+                    self.context.error('no version control location specified '
+                                       'for %s' % component)
                 c_srcdir = '%s-%s' % (c_vars.srcdirname.get(),
-                                      c_vars.version.get())
+                                      version)
                 c_vars.add_var('srcdir', ConfigVarType(self.context, str),
                                os.path.join(args.srcdir, c_srcdir),
                                """Source directory for this component.""",

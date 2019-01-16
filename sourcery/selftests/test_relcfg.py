@@ -1242,6 +1242,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
         # Test per-component internal variables set by __init__.
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1.23")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
@@ -1249,6 +1250,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
                          os.path.join(self.args.srcdir, 'generic-1.23'))
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("4.56")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.generic.srcdirname.set("other-name")\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
@@ -1360,6 +1362,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
                        '"release_configs": "master", '
                        '"sourcery_builder": "master"})\n'
                        'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.source_type.set("open")\n'
                        'cfg.release_configs.vc.set(GitVC("/some/relcfg"))\n'
                        'cfg.release_configs.version.set("master")\n'
                        'cfg.add_component("sourcery_builder")\n'
@@ -1375,6 +1378,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
                        '"release_configs": "master", '
                        '"sourcery_builder": "master"})\n'
                        'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.source_type.set("open")\n'
                        'cfg.release_configs.vc.set(GitVC("/some/relcfg"))\n'
                        'cfg.release_configs.version.set("master")\n'
                        'cfg.add_component("sourcery_builder")\n'
@@ -1395,6 +1399,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
                        '"release_configs": "master", '
                        '"sourcery_builder": "master"})\n'
                        'cfg.add_component("release_configs")\n'
+                       'cfg.release_configs.source_type.set("open")\n'
                        'cfg.release_configs.vc.set(GitVC("/some/relcfg"))\n'
                        'cfg.release_configs.version.set("master")\n'
                        'cfg.add_component("sourcery_builder")\n'
@@ -1411,6 +1416,49 @@ class ReleaseConfigTestCase(unittest.TestCase):
                        'cfg.target.set("aarch64-linux-gnu")\n')
         self.assertRaisesRegex(ScriptError,
                                'first host not the same as build system',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("no_source_type")\n')
+        self.assertRaisesRegex(ScriptError,
+                               'no source type specified for no_source_type',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n')
+        self.assertRaisesRegex(ScriptError,
+                               'no version specified for generic',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.version.set("1.0")\n')
+        self.assertRaisesRegex(ScriptError,
+                               'no version control location specified for '
+                               'generic',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.source_type.set("closed")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n')
+        self.assertRaisesRegex(ScriptError,
+                               'no version specified for generic',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.source_type.set("closed")\n'
+                       'cfg.generic.version.set("1.0")\n')
+        self.assertRaisesRegex(ScriptError,
+                               'no version control location specified for '
+                               'generic',
                                ReleaseConfig, self.context, relcfg_text,
                                loader, self.args)
 
@@ -1437,8 +1485,10 @@ class ReleaseConfigTestCase(unittest.TestCase):
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.add_component("postcheckout")\n'
                        'cfg.postcheckout.version.set("2")\n'
+                       'cfg.postcheckout.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
@@ -1468,8 +1518,10 @@ class ReleaseConfigTestCase(unittest.TestCase):
                          (relcfg.get_component('package'),))
         relcfg_text = ('cfg.add_component("postcheckout")\n'
                        'cfg.postcheckout.version.set("2")\n'
+                       'cfg.postcheckout.vc.set(TarVC("dummy"))\n'
                        'cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
@@ -1487,8 +1539,10 @@ class ReleaseConfigTestCase(unittest.TestCase):
         self.assertEqual(relcfg.list_source_components(), ())
         relcfg_text = ('cfg.add_component("postcheckout")\n'
                        'cfg.postcheckout.version.set("2")\n'
+                       'cfg.postcheckout.vc.set(TarVC("dummy"))\n'
                        'cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
@@ -1497,9 +1551,11 @@ class ReleaseConfigTestCase(unittest.TestCase):
                           relcfg.get_component('postcheckout')))
         relcfg_text = ('cfg.add_component("postcheckout")\n'
                        'cfg.postcheckout.version.set("2")\n'
+                       'cfg.postcheckout.vc.set(TarVC("dummy"))\n'
                        'cfg.postcheckout.source_type.set("closed")\n'
                        'cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
@@ -1508,6 +1564,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
                           relcfg.get_component('postcheckout')))
         relcfg_text = ('cfg.add_component("postcheckout")\n'
                        'cfg.postcheckout.version.set("2")\n'
+                       'cfg.postcheckout.vc.set(TarVC("dummy"))\n'
                        'cfg.add_component("generic")\n'
                        'cfg.generic.source_type.set("none")\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
@@ -1521,6 +1578,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
         loader = ReleaseConfigTextLoader()
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1.23")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
@@ -1537,6 +1595,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
         loader = ReleaseConfigTextLoader()
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1.23")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
@@ -1549,6 +1608,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
         loader = ReleaseConfigTextLoader()
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1.23")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
@@ -1561,6 +1621,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
         loader = ReleaseConfigTextLoader()
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1.23")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
@@ -1573,6 +1634,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
         loader = ReleaseConfigTextLoader()
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1.23")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
@@ -1584,6 +1646,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
         loader = ReleaseConfigTextLoader()
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1.23")\n'
+                       'cfg.generic.vc.set(TarVC("dummy"))\n'
                        'cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n')
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)

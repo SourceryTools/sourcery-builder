@@ -49,9 +49,6 @@ prototype purposes.  Some key missing pieces are:
 * Support for using parts of a toolchain that were previously built
   rather than always building everything from source.
 
-* Component dependencies (rather than needing to add every used
-  component explicitly in the release configuration).
-
 * Generally most script and component features that are in the
   existing internal system but have not yet been implemented for this
   one, as not needed for an initial prototype demonstration.

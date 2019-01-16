@@ -34,6 +34,27 @@ class Component:
 
         """
 
+    @staticmethod
+    def add_dependencies(relcfg):
+        """Add any components this one depends on to the release config.
+
+        This is called after ReleaseConfig.__init__ has done its setup
+        of component-independent variables (which means it cannot be
+        used to add any required bootstrap components), but before it
+        has done any setup of per-component variables.  It can use any
+        release config variables available at that point, but cannot
+        use component sources because they may not be checked out.
+
+        The expected context in which component dependencies are
+        useful is where there is a common include file shared by
+        multiple release configs that use different subsets of the
+        components from it; those configs can add just those
+        components that are user-visible parts of the release and
+        others such as host libraries are then added automatically
+        through dependencies.
+
+        """
+
     files_to_touch = []
     """Files to touch after checkout.
 

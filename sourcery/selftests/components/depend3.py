@@ -1,6 +1,6 @@
-# Initialize sourcery.selftests.components package.
+# sourcery-builder depend3 component for testing.
 
-# Copyright 2018-2019 Mentor Graphics Corporation.
+# Copyright 2019 Mentor Graphics Corporation.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as
@@ -16,11 +16,20 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder selftests.components package."""
+"""sourcery-builder depend3 component for testing."""
 
-__all__ = ['add_rel_cfg_vars', 'build_fail_cd', 'build_fail_command',
-           'build_fail_python', 'build_install_tree', 'build_log',
-           'build_package', 'build_src_closed', 'build_src_open', 'build_test',
-           'configure_opts', 'depend1', 'depend2', 'depend3', 'files_to_touch',
-           'files_to_touch_glob', 'generic', 'no_add_rel_cfg_vars',
-           'no_source_type', 'postcheckout', 'zz_no_source']
+import sourcery.component
+
+__all__ = ['Component']
+
+
+class Component(sourcery.component.Component):
+    """depend3 component implementation."""
+
+    @staticmethod
+    def add_release_config_vars(group):
+        group.source_type.set_implicit('none')
+
+    @staticmethod
+    def add_dependencies(relcfg):
+        relcfg.add_component('depend1')

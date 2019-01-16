@@ -927,6 +927,11 @@ class ReleaseConfig:
                          those names should not change when the version number
                          changes.""",
                          internal=True)
+        prev_components = None
+        while prev_components != self._components:
+            prev_components = self._components.copy()
+            for component in sorted(self._components):
+                context.components[component].add_dependencies(self)
         self._components_full = []
         self._components_full_byname = {}
         for component in sorted(self._components):

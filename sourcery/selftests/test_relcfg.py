@@ -1239,6 +1239,34 @@ class ReleaseConfigTestCase(unittest.TestCase):
                          'toolchain-1.0-1-aarch64-linux-gnu')
         self.assertEqual(relcfg.pkg_name_no_version.get(),
                          'toolchain-aarch64-linux-gnu')
+        # Test component dependencies.
+        relcfg_text = ('cfg.add_component("depend1")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_components(),
+                         (relcfg.get_component('depend1'),
+                          relcfg.get_component('depend2'),
+                          relcfg.get_component('depend3'),
+                          relcfg.get_component('package')))
+        relcfg_text = ('cfg.add_component("depend2")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_components(),
+                         (relcfg.get_component('depend1'),
+                          relcfg.get_component('depend2'),
+                          relcfg.get_component('depend3'),
+                          relcfg.get_component('package')))
+        relcfg_text = ('cfg.add_component("depend3")\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.list_components(),
+                         (relcfg.get_component('depend1'),
+                          relcfg.get_component('depend2'),
+                          relcfg.get_component('depend3'),
+                          relcfg.get_component('package')))
         # Test per-component internal variables set by __init__.
         relcfg_text = ('cfg.add_component("generic")\n'
                        'cfg.generic.version.set("1.23")\n'

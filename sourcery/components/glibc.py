@@ -35,6 +35,10 @@ class Component(sourcery.component.Component):
     def add_release_config_vars(group):
         group.source_type.set_implicit('open')
 
+    @staticmethod
+    def add_dependencies(relcfg):
+        relcfg.add_component('toolchain')
+
     # These files may be regenerated in the source directory as part
     # of building and testing glibc (some have been removed from the
     # source tree in later glibc versions).  Even with timestamps in

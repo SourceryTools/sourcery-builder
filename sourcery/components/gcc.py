@@ -35,6 +35,16 @@ class Component(sourcery.component.Component):
         group.source_type.set_implicit('open')
 
     @staticmethod
+    def add_dependencies(relcfg):
+        relcfg.add_component('toolchain')
+        # Some older versions of GCC do not require GMP, MPFR and MPC,
+        # but the build code here makes no allowance for such
+        # versions, so add them as dependencies for now.
+        relcfg.add_component('gmp')
+        relcfg.add_component('mpfr')
+        relcfg.add_component('mpc')
+
+    @staticmethod
     def postcheckout(context, component):
         context.execute(['contrib/gcc_update', '--touch'],
                         cwd=component.vars.srcdir.get())

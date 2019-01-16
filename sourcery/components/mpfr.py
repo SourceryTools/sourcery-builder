@@ -31,6 +31,10 @@ class Component(sourcery.component.Component):
     def add_release_config_vars(group):
         group.source_type.set_implicit('open')
 
+    @staticmethod
+    def add_dependencies(relcfg):
+        relcfg.add_component('gmp')
+
     # Various files may be regenerated in the source directory by
     # default unless timestamps are in the right order, and the paths
     # to some of those files have changed between MPFR versions.

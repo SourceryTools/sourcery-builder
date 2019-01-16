@@ -33,6 +33,10 @@ class Component(sourcery.component.Component):
         group.source_type.set_implicit('open')
 
     @staticmethod
+    def add_dependencies(relcfg):
+        relcfg.add_component('toolchain')
+
+    @staticmethod
     def add_build_tasks_for_host(cfg, host, component, host_group):
         host_b = host.build_cfg
         add_host_tool_cfg_build_tasks(cfg, host_b, component, host_group)

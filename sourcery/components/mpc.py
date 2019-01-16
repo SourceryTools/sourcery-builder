@@ -31,6 +31,11 @@ class Component(sourcery.component.Component):
     def add_release_config_vars(group):
         group.source_type.set_implicit('open')
 
+    @staticmethod
+    def add_dependencies(relcfg):
+        relcfg.add_component('gmp')
+        relcfg.add_component('mpfr')
+
     files_to_touch = ['aclocal.m4', 'configure', '**/Makefile.in',
                       'config.h.in', 'doc/mpc.info*']
 

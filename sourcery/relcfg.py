@@ -979,6 +979,20 @@ class ReleaseConfig:
             self.context.error('unknown component %s' % name)
         self._components.add(name)
 
+    def have_component(self, name):
+        """Return whether a given component is included in a release config.
+
+        This does not necessarily indicate whether particular builds
+        are run from the component; that depends on the per-component
+        build logic.  Rather, it just indicates whether the component
+        has been added to the config (whether directly or via
+        dependencies).
+
+        """
+        if name not in self.context.components:
+            self.context.error('unknown component %s' % name)
+        return name in self._components
+
     def list_components(self):
         """Return a list of the components in a release config."""
         return self._components_full

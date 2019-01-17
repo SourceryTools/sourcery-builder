@@ -1536,6 +1536,41 @@ class ReleaseConfigTestCase(unittest.TestCase):
                                ReleaseConfig, self.context, relcfg_text,
                                loader, self.args)
 
+    def test_have_component(self):
+        """Test ReleaseConfig.have_component."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertTrue(relcfg.have_component('package'))
+        self.assertFalse(relcfg.have_component('generic'))
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.source_type.set("none")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertTrue(relcfg.have_component('package'))
+        self.assertTrue(relcfg.have_component('generic'))
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("depend1")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertTrue(relcfg.have_component('package'))
+        self.assertFalse(relcfg.have_component('generic'))
+        self.assertTrue(relcfg.have_component('depend1'))
+        self.assertTrue(relcfg.have_component('depend2'))
+        self.assertTrue(relcfg.have_component('depend3'))
+
+    def test_have_component_errors(self):
+        """Test errors from ReleaseConfig.have_component."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertRaisesRegex(ScriptError,
+                               'unknown component no_such_component',
+                               relcfg.have_component, 'no_such_component')
+
     def test_list_components(self):
         """Test ReleaseConfig.list_components."""
         loader = ReleaseConfigTextLoader()

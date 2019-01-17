@@ -37,6 +37,8 @@ class Component(sourcery.component.Component):
     @staticmethod
     def add_dependencies(relcfg):
         relcfg.add_component('toolchain')
+        if any(host.build_cfg.use_libiconv() for host in relcfg.hosts.get()):
+            relcfg.add_component('libiconv')
         # Some older versions of GCC do not require GMP, MPFR and MPC,
         # but the build code here makes no allowance for such
         # versions, so add them as dependencies for now.
@@ -105,6 +107,8 @@ class Component(sourcery.component.Component):
             group.depend_install(host_b, 'gmp')
             group.depend_install(host_b, 'mpfr')
             group.depend_install(host_b, 'mpc')
+            if host_b.use_libiconv():
+                group.depend_install(host_b, 'libiconv')
             group.depend_install(host_b, 'toolchain-1-before')
             group.env_prepend('PATH', bindir_1)
             tree = cfg.install_tree_fstree(host_b, 'gcc-first')
@@ -121,6 +125,8 @@ class Component(sourcery.component.Component):
         group.depend_install(host_b, 'gmp')
         group.depend_install(host_b, 'mpfr')
         group.depend_install(host_b, 'mpc')
+        if host_b.use_libiconv():
+            group.depend_install(host_b, 'libiconv')
         group.depend_install(build_b, toolchain_2_before)
         group.env_prepend('PATH', bindir_2)
         tree = cfg.install_tree_fstree(host_b, 'gcc')
@@ -170,7 +176,11 @@ class Component(sourcery.component.Component):
 
     @staticmethod
     def configure_opts(cfg, host):
-        return ['--disable-libssp',
+        opts = ['--disable-libssp',
                 '--with-gmp=%s' % cfg.install_tree_path(host, 'gmp'),
                 '--with-mpfr=%s' % cfg.install_tree_path(host, 'mpfr'),
                 '--with-mpc=%s' % cfg.install_tree_path(host, 'mpc')]
+        if host.use_libiconv():
+            opts.append('--with-libiconv-prefix=%s'
+                        % cfg.install_tree_path(host, 'libiconv'))
+        return opts

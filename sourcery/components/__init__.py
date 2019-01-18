@@ -18,6 +18,6 @@
 
 """Sourcery Builder components package."""
 
-__all__ = ['binutils', 'gcc', 'glibc', 'gmp', 'libiconv', 'linux', 'mpc',
-           'mpfr', 'package', 'release_configs', 'sourcery_builder',
+__all__ = ['binutils', 'gcc', 'glibc', 'gmp', 'isl', 'libiconv', 'linux',
+           'mpc', 'mpfr', 'package', 'release_configs', 'sourcery_builder',
            'toolchain']

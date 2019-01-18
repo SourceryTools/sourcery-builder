@@ -109,6 +109,8 @@ class Component(sourcery.component.Component):
             group.depend_install(host_b, 'mpc')
             if host_b.use_libiconv():
                 group.depend_install(host_b, 'libiconv')
+            if cfg.have_component('isl'):
+                group.depend_install(host_b, 'isl')
             group.depend_install(host_b, 'toolchain-1-before')
             group.env_prepend('PATH', bindir_1)
             tree = cfg.install_tree_fstree(host_b, 'gcc-first')
@@ -127,6 +129,8 @@ class Component(sourcery.component.Component):
         group.depend_install(host_b, 'mpc')
         if host_b.use_libiconv():
             group.depend_install(host_b, 'libiconv')
+        if cfg.have_component('isl'):
+            group.depend_install(host_b, 'isl')
         group.depend_install(build_b, toolchain_2_before)
         group.env_prepend('PATH', bindir_2)
         tree = cfg.install_tree_fstree(host_b, 'gcc')
@@ -183,4 +187,6 @@ class Component(sourcery.component.Component):
         if host.use_libiconv():
             opts.append('--with-libiconv-prefix=%s'
                         % cfg.install_tree_path(host, 'libiconv'))
+        if cfg.have_component('isl'):
+            opts.append('--with-isl=%s' % cfg.install_tree_path(host, 'isl'))
         return opts

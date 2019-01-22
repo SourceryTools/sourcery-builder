@@ -76,12 +76,10 @@ class Component(sourcery.component.Component):
         bindir_2 = os.path.join(inst_2_before, bindir_rel)
         build_time_tools_1 = os.path.join(inst_1_before, target, 'bin')
         build_time_tools_2 = os.path.join(inst_2_before, target, 'bin')
-        # glibc version hardcoding only for initial prototype.
         opts_first = ['--enable-languages=c',
                       '--disable-shared',
                       '--disable-threads',
                       '--without-headers', '--with-newlib',
-                      '--with-glibc-version=2.28',
                       '--with-sysroot=%s' % sysroot,
                       '--with-build-sysroot=%s' % build_sysroot_1,
                       '--with-build-time-tools=%s' % build_time_tools_1,
@@ -94,6 +92,21 @@ class Component(sourcery.component.Component):
                       '--disable-libmpx',
                       '--disable-libquadmath',
                       '--disable-libsanitizer']
+        if cfg.have_component('glibc'):
+            glibc_version_h = os.path.join(cfg.glibc.srcdir.get(), 'version.h')
+            glibc_version = None
+            with open(glibc_version_h, 'r', encoding='utf-8') as file:
+                start = '#define VERSION "'
+                for line in file:
+                    if line.startswith(start):
+                        line = line[len(start):].rstrip('"\n')
+                        vers = line.split('.')
+                        glibc_version = '.'.join(vers[0:2])
+                        break
+            if glibc_version is not None:
+                opts_first.append('--with-glibc-version=%s' % glibc_version)
+            else:
+                cfg.context.error('could not determine glibc version')
         opts_second = ['--enable-languages=c,c++',
                        '--enable-shared',
                        '--enable-threads',

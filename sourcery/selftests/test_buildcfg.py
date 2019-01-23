@@ -107,6 +107,15 @@ class BuildCfgTestCase(unittest.TestCase):
         cfg = BuildCfg(self.context, 'x86_64-pc-linux-gnu')
         self.assertFalse(cfg.use_libiconv())
 
+    def test_use_ncurses(self):
+        """Test the use_ncurses method."""
+        cfg = BuildCfg(self.context, 'i686-mingw32')
+        self.assertFalse(cfg.use_ncurses())
+        cfg = BuildCfg(self.context, 'x86_64-w64-mingw32')
+        self.assertFalse(cfg.use_ncurses())
+        cfg = BuildCfg(self.context, 'x86_64-pc-linux-gnu')
+        self.assertTrue(cfg.use_ncurses())
+
     def test_tool_basic(self):
         """Test basic use of the tool method."""
         cfg = BuildCfg(self.context, 'aarch64-linux-gnu')

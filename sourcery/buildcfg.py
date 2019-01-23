@@ -130,6 +130,10 @@ class BuildCfg:
         """Return whether to use libiconv on this system."""
         return self.is_windows()
 
+    def use_ncurses(self):
+        """Return whether to use ncurses on this system."""
+        return not self.is_windows()
+
     def tool(self, name):
         """Return the full name and arguments for the specified tool.
 

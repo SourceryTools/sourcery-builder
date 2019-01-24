@@ -23,6 +23,7 @@ import os.path
 from sourcery.autoconf import add_host_tool_cfg_build_tasks
 import sourcery.component
 from sourcery.fstree import FSTreeRemove, FSTreeExtract, FSTreeUnion
+from sourcery.relcfg import ConfigVarTypeList, ConfigVarTypeStrEnum
 
 __all__ = ['Component']
 
@@ -33,6 +34,20 @@ class Component(sourcery.component.Component):
     @staticmethod
     def add_release_config_vars(group):
         group.source_type.set_implicit('open')
+        group.add_var('languages',
+                      ConfigVarTypeList(
+                          ConfigVarTypeStrEnum(
+                              group.context,
+                              {'ada', 'brig', 'c++', 'd', 'fortran', 'go',
+                               'jit', 'obj-c++', 'objc'})),
+                      ('c++',),
+                      """The languages other than C to enable, in the form in
+                      which they are listed in --enable-languages.  'lto' does
+                      not need to be listed explicitly.  Some languages may
+                      have extra host requirements, such as having a
+                      same-version Ada compiler for the host already available
+                      to build 'ada' and '--enable-host-shared' to build
+                      'jit'.""")
 
     @staticmethod
     def add_dependencies(relcfg):
@@ -107,7 +122,9 @@ class Component(sourcery.component.Component):
                 opts_first.append('--with-glibc-version=%s' % glibc_version)
             else:
                 cfg.context.error('could not determine glibc version')
-        opts_second = ['--enable-languages=c,c++',
+        languages = ['c']
+        languages.extend(component.vars.languages.get())
+        opts_second = ['--enable-languages=%s' % ','.join(languages),
                        '--enable-shared',
                        '--enable-threads',
                        '--with-sysroot=%s' % sysroot,

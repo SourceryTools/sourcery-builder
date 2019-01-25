@@ -25,8 +25,8 @@ import os.path
 import shutil
 import stat
 
-__all__ = ['MapFSTree', 'MapFSTreeCopy', 'MapFSTreeMap', 'FSTree',
-           'FSTreeCopy', 'FSTreeEmpty', 'FSTreeMove', 'FSTreeRemove',
+__all__ = ['MapFSTree', 'MapFSTreeCopy', 'MapFSTreeMap', 'MapFSTreeSymlink',
+           'FSTree', 'FSTreeCopy', 'FSTreeEmpty', 'FSTreeMove', 'FSTreeRemove',
            'FSTreeExtract', 'FSTreeUnion']
 
 
@@ -287,6 +287,27 @@ class MapFSTreeMap(MapFSTree):
 
     def _contents(self):
         self.context.error('_contents called for directory')
+
+
+class MapFSTreeSymlink(MapFSTree):
+    """A MapFSTreeSymlink represents a symbolic link."""
+
+    def __init__(self, context, target):
+        """Initialize a MapFSTreeSymlink object."""
+        super().__init__(context)
+        self.is_dir = False
+        if target == '':
+            context.error('empty symlink target')
+        self.target = target
+
+    def _export_impl(self, path):
+        os.symlink(self.target, path)
+
+    def _expand(self, copy):
+        return self
+
+    def _contents(self):
+        return ('symlink', self.target)
 
 
 class FSTree:

@@ -26,8 +26,9 @@ import tempfile
 import unittest
 
 from sourcery.context import ScriptError, ScriptContext
-from sourcery.fstree import MapFSTreeCopy, MapFSTreeMap, FSTreeCopy, \
-    FSTreeEmpty, FSTreeMove, FSTreeRemove, FSTreeExtract, FSTreeUnion
+from sourcery.fstree import MapFSTreeCopy, MapFSTreeMap, MapFSTreeSymlink, \
+    FSTreeCopy, FSTreeEmpty, FSTreeMove, FSTreeRemove, FSTreeExtract, \
+    FSTreeUnion
 from sourcery.selftests.support import create_files, read_files
 
 __all__ = ['MapFSTreeTestCase', 'FSTreeTestCase']
@@ -106,6 +107,21 @@ class MapFSTreeTestCase(unittest.TestCase):
                                'bad file name in map',
                                MapFSTreeMap, self.context, {'a/b': empty})
 
+    def test_init_symlink(self):
+        """Test valid initialization of MapFSTreeSymlink."""
+        tree = MapFSTreeSymlink(self.context, 'test')
+        self.assertFalse(tree.is_dir)
+        tree = MapFSTreeSymlink(self.context, '.')
+        self.assertFalse(tree.is_dir)
+        tree = MapFSTreeSymlink(self.context, '/')
+        self.assertFalse(tree.is_dir)
+
+    def test_init_symlink_errors(self):
+        """Test errors from initialization of MapFSTreeSymlink."""
+        self.assertRaisesRegex(ScriptError,
+                               'empty symlink target',
+                               MapFSTreeSymlink, self.context, '')
+
     def test_export(self):
         """Test exporting MapFSTree objects."""
         create_files(self.indir, ['foo', 'foo/bar'],
@@ -171,6 +187,10 @@ class MapFSTreeTestCase(unittest.TestCase):
                          ({'y', 'y/bar', 'z', 'empty'},
                           {'x': 'file a', 'y/b': 'file foo/b'},
                           {'s': 'foo/bar'}))
+        shutil.rmtree(self.outdir)
+        tree = MapFSTreeSymlink(self.context, 'target')
+        tree.export(self.outdir)
+        self.assertEqual(os.readlink(self.outdir), 'target')
 
     def test_export_errors(self):
         """Test errors exporting MapFSTree objects."""
@@ -250,6 +270,16 @@ class MapFSTreeTestCase(unittest.TestCase):
                           {'a': 'file a/a', 'foo/b': 'file a/foo/b'},
                           {'dead-symlink': 'bad', 'file-symlink': 'a',
                            'dir-symlink': 'foo/bar'}))
+        tree_s = MapFSTreeSymlink(self.context, 'bad')
+        tree_s = MapFSTreeMap(self.context, {'dead-symlink': tree_s})
+        tree_u = tree_a.union(tree_a, '', True)
+        shutil.rmtree(self.outdir)
+        tree_u.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'foo', 'foo/bar'},
+                          {'a': 'file a/a', 'foo/b': 'file a/foo/b'},
+                          {'dead-symlink': 'bad', 'file-symlink': 'a',
+                           'dir-symlink': 'foo/bar'}))
 
     def test_union_errors(self):
         """Test errors from unions of MapFSTree objects."""
@@ -312,6 +342,11 @@ class MapFSTreeTestCase(unittest.TestCase):
         self.assertRaisesRegex(ScriptError,
                                'inconsistent contents in union operation: x',
                                tree_c.union, tree_e, '', True)
+        tree_e2 = MapFSTreeSymlink(self.context, 'target2')
+        tree_e2 = MapFSTreeMap(self.context, {'x': tree_e2})
+        self.assertRaisesRegex(ScriptError,
+                               'inconsistent contents in union operation: x',
+                               tree_c.union, tree_e2, '', True)
         # Invalid with duplicates allowed because of different file
         # permissions.
         tree_f = MapFSTreeCopy(self.context, os.path.join(self.indir, 'f'))

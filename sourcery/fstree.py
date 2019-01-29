@@ -26,8 +26,8 @@ import shutil
 import stat
 
 __all__ = ['MapFSTree', 'MapFSTreeCopy', 'MapFSTreeMap', 'MapFSTreeSymlink',
-           'FSTree', 'FSTreeCopy', 'FSTreeEmpty', 'FSTreeMove', 'FSTreeRemove',
-           'FSTreeExtract', 'FSTreeUnion']
+           'FSTree', 'FSTreeCopy', 'FSTreeEmpty', 'FSTreeSymlink',
+           'FSTreeMove', 'FSTreeRemove', 'FSTreeExtract', 'FSTreeUnion']
 
 
 def _invalid_path(path):
@@ -372,6 +372,21 @@ class FSTreeEmpty(FSTree):
 
     def export_map(self):
         return MapFSTreeMap(self.context, {})
+
+
+class FSTreeSymlink(FSTree):
+    """An FSTreeSymlink represents a symbolic link."""
+
+    def __init__(self, context, target):
+        """Initialize an FSTreeSymlink object."""
+        self.context = context
+        if target == '':
+            context.error('empty symlink target')
+        self.install_trees = set()
+        self.target = target
+
+    def export_map(self):
+        return MapFSTreeSymlink(self.context, self.target)
 
 
 class FSTreeMove(FSTree):

@@ -27,8 +27,8 @@ import unittest
 
 from sourcery.context import ScriptError, ScriptContext
 from sourcery.fstree import MapFSTreeCopy, MapFSTreeMap, MapFSTreeSymlink, \
-    FSTreeCopy, FSTreeEmpty, FSTreeMove, FSTreeRemove, FSTreeExtract, \
-    FSTreeUnion
+    FSTreeCopy, FSTreeEmpty, FSTreeSymlink, FSTreeMove, FSTreeRemove, \
+    FSTreeExtract, FSTreeUnion
 from sourcery.selftests.support import create_files, read_files
 
 __all__ = ['MapFSTreeTestCase', 'FSTreeTestCase']
@@ -577,6 +577,19 @@ class FSTreeTestCase(unittest.TestCase):
         self.assertEqual(tree.install_trees, set())
         tree.export(self.outdir)
         self.assertEqual(read_files(self.outdir), (set(), {}, {}))
+
+    def test_symlink(self):
+        """Test FSTreeSymlink."""
+        tree = FSTreeSymlink(self.context, 'example/target')
+        self.assertEqual(tree.install_trees, set())
+        tree.export(self.outdir)
+        self.assertEqual(os.readlink(self.outdir), 'example/target')
+
+    def test_symlink_errors(self):
+        """Test errors from FSTreeSymlink."""
+        self.assertRaisesRegex(ScriptError,
+                               'empty symlink target',
+                               FSTreeSymlink, self.context, '')
 
     def test_move(self):
         """Test FSTreeMove."""

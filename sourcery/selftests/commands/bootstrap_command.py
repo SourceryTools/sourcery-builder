@@ -18,12 +18,12 @@
 
 """sourcery-builder bootstrap-command command for testing."""
 
-import sourcery.command
+import sourcery.selftests.command
 
 __all__ = ['Command']
 
 
-class Command(sourcery.command.Command):
+class Command(sourcery.selftests.command.Command):
     """bootstrap-command command implementation."""
 
     short_desc = 'Test bootstrap command.'

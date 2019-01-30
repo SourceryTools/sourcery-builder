@@ -18,13 +18,13 @@
 
 """sourcery-builder add_rel_cfg_vars component for testing."""
 
-import sourcery.component
 from sourcery.relcfg import ConfigVarType
+import sourcery.selftests.component
 
 __all__ = ['Component']
 
 
-class Component(sourcery.component.Component):
+class Component(sourcery.selftests.component.Component):
     """add_rel_cfg_vars component implementation."""
 
     @staticmethod

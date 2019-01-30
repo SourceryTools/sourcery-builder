@@ -22,12 +22,12 @@ import os
 import os.path
 
 from sourcery.buildtask import BuildTask
-import sourcery.component
+import sourcery.selftests.component
 
 __all__ = ['Component']
 
 
-class Component(sourcery.component.Component):
+class Component(sourcery.selftests.component.Component):
     """build_test component implementation."""
 
     @staticmethod

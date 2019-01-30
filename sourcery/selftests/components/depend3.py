@@ -18,12 +18,12 @@
 
 """sourcery-builder depend3 component for testing."""
 
-import sourcery.component
+import sourcery.selftests.component
 
 __all__ = ['Component']
 
 
-class Component(sourcery.component.Component):
+class Component(sourcery.selftests.component.Component):
     """depend3 component implementation."""
 
     @staticmethod

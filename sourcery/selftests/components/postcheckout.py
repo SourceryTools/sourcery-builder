@@ -18,12 +18,12 @@
 
 """sourcery-builder component for testing postcheckout hook."""
 
-import sourcery.component
+import sourcery.selftests.component
 
 __all__ = ['Component']
 
 
-class Component(sourcery.component.Component):
+class Component(sourcery.selftests.component.Component):
     """postcheckout component implementation."""
 
     @staticmethod

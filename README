@@ -53,14 +53,5 @@ prototype purposes.  Some key missing pieces are:
   existing internal system but have not yet been implemented for this
   one, as not needed for an initial prototype demonstration.
 
-* Support for site-specific wrappers for this code, adding
-  site-specific components, commands and other functionality without
-  needing to change the core Sourcery Builder code (parts exist and
-  are used by the self-tests to test with test-only components set up
-  to exercise particular features, but not enough for some important
-  cases such as additional Component or Command methods added in the
-  wrappers that also need to exist for components or commands defined
-  in Sourcery Builder).
-
 * Any public feature roadmap or designs for missing features (some
   notes exist, but are not public).

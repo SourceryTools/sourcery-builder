@@ -1,6 +1,6 @@
-# sourcery-builder build_fail_command component for testing.
+# sourcery-builder generic extra component for testing.
 
-# Copyright 2018-2019 Mentor Graphics Corporation.
+# Copyright 2019 Mentor Graphics Corporation.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as
@@ -16,22 +16,12 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""sourcery-builder build_fail_command component for testing."""
+"""sourcery-builder generic extra component for testing."""
 
-from sourcery.buildtask import BuildTask
 import sourcery.selftests.component
 
 __all__ = ['Component']
 
 
 class Component(sourcery.selftests.component.Component):
-    """build_fail_command component implementation."""
-
-    @staticmethod
-    def add_release_config_vars(group):
-        group.source_type.set_implicit('none')
-
-    @staticmethod
-    def add_build_tasks_for_first_host(cfg, host, component, host_group):
-        task = BuildTask(cfg, host_group, 'first-host')
-        task.add_command(['sh', '-c', 'echo 1; echo 2; echo 3; echo 4; false'])
+    """generic component implementation."""

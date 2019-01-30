@@ -18,10 +18,10 @@
 
 """sourcery-builder no_add_rel_cfg_vars component for testing."""
 
-import sourcery.component
+import sourcery.selftests.component
 
 __all__ = ['Component']
 
 
-class Component(sourcery.component.Component):
+class Component(sourcery.selftests.component.Component):
     """no_add_rel_cfg_vars component implementation."""

@@ -18,12 +18,12 @@
 
 """sourcery-builder reexec command for testing."""
 
-import sourcery.command
+import sourcery.selftests.command
 
 __all__ = ['Command']
 
 
-class Command(sourcery.command.Command):
+class Command(sourcery.selftests.command.Command):
     """reexec command implementation."""
 
     short_desc = 'Test re-execution.'

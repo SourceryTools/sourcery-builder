@@ -1,6 +1,6 @@
-# sourcery-builder zz_no_source component for testing.
+# Base class for sourcery-builder self-test extra components.
 
-# Copyright 2018-2019 Mentor Graphics Corporation.
+# Copyright 2019 Mentor Graphics Corporation.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as
@@ -16,21 +16,13 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""sourcery-builder zz_no_source component for testing.
+"""Base class for sourcery-builder self-test extra components."""
 
-The component name is deliberately chosen so that it comes last
-alphabetically for 'sourcery-builder info' testing.
-
-"""
-
-import sourcery.selftests.component
+import sourcery.component
 
 __all__ = ['Component']
 
 
-class Component(sourcery.selftests.component.Component):
-    """zz_no_source component implementation."""
-
-    @staticmethod
-    def add_release_config_vars(group):
-        group.source_type.set_implicit('none')
+class Component(sourcery.component.Component):
+    """Base class from which each self-test extra component's class
+    inherits."""

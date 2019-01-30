@@ -182,25 +182,50 @@ class ContextTestCase(unittest.TestCase):
         self.assertEqual(test_context.package_list,
                          ('sourcery', 'sourcery.selftests'))
         self.assertIn('self-test', test_context.commands)
-        self.assertIs(test_context.commands['self-test'],
-                      sourcery.commands.self_test.Command)
+        self.assertIsNot(test_context.commands['self-test'],
+                         sourcery.commands.self_test.Command)
+        self.assertTrue(issubclass(test_context.commands['self-test'],
+                                   sourcery.commands.self_test.Command))
+        import sourcery.selftests.command
+        self.assertTrue(issubclass(test_context.commands['self-test'],
+                                   sourcery.selftests.command.Command))
         self.assertIn('null', test_context.commands)
         import sourcery.selftests.commands.null
         self.assertIs(test_context.commands['null'],
                       sourcery.selftests.commands.null.Command)
         self.assertIn('gcc', test_context.components)
-        self.assertIs(test_context.components['gcc'],
-                      sourcery.components.gcc.Component)
+        self.assertIsNot(test_context.components['gcc'],
+                         sourcery.components.gcc.Component)
+        self.assertTrue(issubclass(test_context.components['gcc'],
+                                   sourcery.components.gcc.Component))
+        import sourcery.selftests.component
+        self.assertTrue(issubclass(test_context.components['gcc'],
+                                   sourcery.selftests.component.Component))
         self.assertIn('generic', test_context.components)
         import sourcery.selftests.components.generic
         self.assertIs(test_context.components['generic'],
                       sourcery.selftests.components.generic.Component)
-        # Errors for duplicate commands and components are not tested
-        # here, and are expected to be removed to allow for packages
-        # with extra commands and components to provide extra Command
-        # and Component methods, and to implement those for commands
-        # and components that exist in base Sourcery Builder
-        # (inheriting from those commands and components).
+        # Test case with multiple levels of extra commands and components.
+        test_context = ScriptContext(['sourcery.selftests',
+                                      'sourcery.selftests.extra'])
+        self.assertEqual(test_context.package_list,
+                         ('sourcery', 'sourcery.selftests',
+                          'sourcery.selftests.extra'))
+        self.assertEqual(test_context.commands['null'].short_desc,
+                         'Do nothing, overridden.')
+        import sourcery.selftests.extra.component
+        self.assertTrue(issubclass(
+            test_context.components['generic'],
+            sourcery.selftests.extra.component.Component))
+        self.assertTrue(issubclass(test_context.components['generic'],
+                                   sourcery.selftests.component.Component))
+        import sourcery.selftests.extra.components.generic
+        self.assertTrue(issubclass(
+            test_context.components['generic'],
+            sourcery.selftests.extra.components.generic.Component))
+        self.assertTrue(issubclass(
+            test_context.components['generic'],
+            sourcery.selftests.components.generic.Component))
 
     def test_build_wrapper_path(self):
         """Test ScriptContext.build_wrapper_path."""

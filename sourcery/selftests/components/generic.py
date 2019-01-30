@@ -18,12 +18,12 @@
 
 """sourcery-builder generic component for testing."""
 
-import sourcery.component
+import sourcery.selftests.component
 
 __all__ = ['Component']
 
 
-class Component(sourcery.component.Component):
+class Component(sourcery.selftests.component.Component):
     """generic component implementation."""
 
     @staticmethod

@@ -18,13 +18,13 @@
 
 """sourcery-builder reexec-relcfg command for testing."""
 
-import sourcery.command
+import sourcery.selftests.command
 from sourcery.relcfg import add_release_config_arg
 
 __all__ = ['Command']
 
 
-class Command(sourcery.command.Command):
+class Command(sourcery.selftests.command.Command):
     """reexec-relcfg command implementation."""
 
     short_desc = 'Test re-execution.'

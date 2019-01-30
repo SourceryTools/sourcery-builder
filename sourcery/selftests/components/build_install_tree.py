@@ -19,13 +19,13 @@
 """sourcery-builder build_install_tree component for testing."""
 
 from sourcery.buildtask import BuildTask
-import sourcery.component
+import sourcery.selftests.component
 from sourcery.fstree import FSTreeMove
 
 __all__ = ['Component']
 
 
-class Component(sourcery.component.Component):
+class Component(sourcery.selftests.component.Component):
     """build_install_tree component implementation."""
 
     @staticmethod

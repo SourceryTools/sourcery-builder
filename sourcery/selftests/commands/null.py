@@ -18,12 +18,12 @@
 
 """sourcery-builder null command for testing."""
 
-import sourcery.command
+import sourcery.selftests.command
 
 __all__ = ['Command']
 
 
-class Command(sourcery.command.Command):
+class Command(sourcery.selftests.command.Command):
     """null command implementation."""
 
     short_desc = 'Do nothing.'

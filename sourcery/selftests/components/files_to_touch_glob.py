@@ -18,12 +18,12 @@
 
 """sourcery-builder component for testing files_to_touch using globs."""
 
-import sourcery.component
+import sourcery.selftests.component
 
 __all__ = ['Component']
 
 
-class Component(sourcery.component.Component):
+class Component(sourcery.selftests.component.Component):
     """files_to_touch_glob component implementation."""
 
     @staticmethod

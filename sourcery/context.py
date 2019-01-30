@@ -91,7 +91,8 @@ class ScriptContext:
         """Initialize a context.
 
         A list of names of extra packages in which to find commands
-        and components may be provided.
+        and components may be provided.  These are listed in order
+        from least to most derived.
 
         """
         # The full name of the script being run.  This is not
@@ -160,30 +161,77 @@ class ScriptContext:
         self.called_with_args = None
         self.called_with_relcfg = None
 
+    def _load_subunits(self, mod_name, subpkg_name, class_name, do_replace):
+        """Load the modules for commands or components.
+
+        Each package (in self.package_list) is expected to have a
+        module named mod_name, with a class named class_name, as well
+        as to contain a package named subpkg_name, which contains the
+        individual subunits (commands or components); if do_replace,
+        the logical name of such a subunit contains '-' where the
+        module name contains '_'.  Say there are packages A, B, C (in
+        the order from least to most derived, as in
+        self.package_list).  Then a subunit X would be expected to
+        have a class C.subpkg_name.X.class_name, that inherits, in
+        order from most to least derived, from C.mod_name.class_name,
+        B.subpkg_name.X.class_name, B.mod_name.class_name,
+        A.subpkg_name.X.class_name, A.mod_name.class_name.  However, X
+        may not exist in all of A, B and C.  Thus, a class is
+        constructed dynamically that inherits from all the required
+        base classes in the required order.
+
+        """
+        pkgs_base = {}
+        pkgs_sub = {}
+        subunits = set()
+        for pkg in self.package_list:
+            base_str = '%s.%s' % (pkg, mod_name)
+            base_mod = importlib.import_module(base_str)
+            pkgs_base[pkg] = getattr(base_mod, class_name)
+            pkg_str = '%s.%s' % (pkg, subpkg_name)
+            pkg_mod = importlib.import_module(pkg_str)
+            pkgs_sub[pkg] = {}
+            for subunit in pkg_mod.__all__:
+                mod = importlib.import_module('%s.%s' % (pkg_str, subunit))
+                if do_replace:
+                    subunit = subunit.replace('_', '-')
+                subunits.add(subunit)
+                pkgs_sub[pkg][subunit] = getattr(mod, class_name)
+        subunits_ret = {}
+        for subunit in sorted(subunits):
+            bases = []
+            last_class = None
+            for pkg in self.package_list:
+                bases.append(pkgs_base[pkg])
+                if subunit in pkgs_sub[pkg]:
+                    last_class = pkgs_sub[pkg][subunit]
+                    bases.append(last_class)
+                else:
+                    last_class = None
+            for base in bases:
+                if last_class is not None:
+                    if not issubclass(last_class, base):
+                        last_class = None
+            bases = tuple(reversed(bases))
+            if last_class is None:
+                last_class = type(class_name, bases, {})
+            else:
+                # Construct a class and throw it away to ensure an
+                # error if the method resolution order is not as
+                # expected.
+                type(class_name, bases, {})
+            subunits_ret[subunit] = last_class
+        return subunits_ret
+
     def _load_commands(self):
         """Load the modules for all sourcery-builder commands."""
-        self.commands = {}
-        for pkg in self.package_list:
-            pkg_str = pkg + '.commands'
-            pkg_mod = importlib.import_module(pkg_str)
-            for cmd in pkg_mod.__all__:
-                mod = importlib.import_module(pkg_str + '.' + cmd)
-                cmd_name = cmd.replace('_', '-')
-                if cmd_name in self.commands:
-                    self.error('duplicate command %s' % cmd_name)
-                self.commands[cmd_name] = mod.Command
+        self.commands = self._load_subunits('command', 'commands', 'Command',
+                                            True)
 
     def _load_components(self):
         """Load the modules for all sourcery-builder components."""
-        self.components = {}
-        for pkg in self.package_list:
-            pkg_str = pkg + '.components'
-            pkg_mod = importlib.import_module(pkg_str)
-            for component in pkg_mod.__all__:
-                mod = importlib.import_module(pkg_str + '.' + component)
-                if component in self.components:
-                    self.error('duplicate component %s' % component)
-                self.components[component] = mod.Component
+        self.components = self._load_subunits('component', 'components',
+                                              'Component', False)
 
     def _set_script(self, script):
         """Set the name of the script for use in diagnostic messages."""

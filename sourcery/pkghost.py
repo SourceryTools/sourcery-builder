@@ -66,3 +66,7 @@ class PkgHost:
             return 'PkgHost(%s)' % repr(self.name)
         else:
             return 'PkgHost(%s, %s)' % (repr(self.name), build_cfg_repr)
+
+    def have_symlinks(self):
+        """Return whether packages for this host can use symlinks."""
+        return not self.build_cfg.is_windows()

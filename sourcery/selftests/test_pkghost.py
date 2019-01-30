@@ -60,3 +60,18 @@ class PkgHostTestCase(unittest.TestCase):
                          "PkgHost('i686-pc-linux-gnu', "
                          "BuildCfg('i686-pc-linux-gnu', "
                          "tool_prefix='x86_64-linux-gnu-', ccopts=('-m32',)))")
+
+    def test_have_symlinks(self):
+        """Test PkgHost.have_symlinks."""
+        host = PkgHost(self.context, 'aarch64-linux-gnu')
+        self.assertTrue(host.have_symlinks())
+        host = PkgHost(self.context, 'i686-mingw32')
+        self.assertFalse(host.have_symlinks())
+        host = PkgHost(self.context, 'x86_64-w64-mingw32')
+        self.assertFalse(host.have_symlinks())
+        cfg = BuildCfg(self.context, 'i686-pc-linux-gnu')
+        host = PkgHost(self.context, 'i686-mingw32', cfg)
+        self.assertTrue(host.have_symlinks())
+        cfg = BuildCfg(self.context, 'x86_64-w64-mingw32')
+        host = PkgHost(self.context, 'x86_64-linux-gnu', cfg)
+        self.assertFalse(host.have_symlinks())

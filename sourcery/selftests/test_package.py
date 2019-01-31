@@ -20,6 +20,7 @@
 
 import os
 import os.path
+import shutil
 import stat
 import subprocess
 import tarfile
@@ -28,7 +29,7 @@ import unittest
 
 from sourcery.context import ScriptError, ScriptContext
 from sourcery.package import fix_perms, hard_link_files, resolve_symlinks, \
-    tar_command
+    replace_symlinks, tar_command
 from sourcery.selftests.support import create_files, read_files
 
 __all__ = ['PackageTestCase']
@@ -223,6 +224,35 @@ class PackageTestCase(unittest.TestCase):
                                'not a directory',
                                resolve_symlinks, self.context, self.indir,
                                (), 'tofile', True, set())
+
+    def test_replace_symlinks(self):
+        """Test the replace_symlinks function."""
+        create_files(self.indir, ['d1', 'd2'],
+                     {'f': 'f', 'd1/f': 'd1/f', 'd2/f': 'd2/f'},
+                     {'d1/link': '../f', 'd1/d2': '../d2', 'd2/link': '../f'})
+        replace_symlinks(self.context, self.indir)
+        self.assertEqual(read_files(self.indir),
+                         ({'d1', 'd2', 'd1/d2'},
+                          {'f': 'f', 'd1/f': 'd1/f', 'd2/f': 'd2/f',
+                           'd1/link': 'f', 'd2/link': 'f', 'd1/d2/f': 'd2/f',
+                           'd1/d2/link': 'f'},
+                          {}))
+
+    def test_replace_symlinks_errors(self):
+        """Test errors from replace_symlinks."""
+        create_files(self.indir, ['a', 'b'],
+                     {},
+                     {'a/x': '../b', 'b/y': '../a'})
+        self.assertRaisesRegex(ScriptError,
+                               'circular dependency',
+                               replace_symlinks, self.context, self.indir)
+        shutil.rmtree(self.indir)
+        create_files(self.indir, [],
+                     {},
+                     {'a': '.'})
+        self.assertRaisesRegex(ScriptError,
+                               'circular dependency',
+                               replace_symlinks, self.context, self.indir)
 
     def test_tar_command(self):
         """Test the tar_command function."""

@@ -22,9 +22,13 @@ import collections
 import hashlib
 import os
 import os.path
+import shutil
 import stat
 
-__all__ = ['fix_perms', 'hard_link_files', 'resolve_symlinks', 'tar_command']
+from sourcery.tsort import tsort
+
+__all__ = ['fix_perms', 'hard_link_files', 'resolve_symlinks',
+           'replace_symlinks', 'tar_command']
 
 
 _NOEX_PERM = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
@@ -149,6 +153,72 @@ def resolve_symlinks(context, top_path, sub_path, link_name, require_dir,
             sub_path = elt_path
     being_resolved.remove(new_path)
     return sub_path
+
+
+def replace_symlinks(context, top_path):
+    """Replace any symlinks under top_path with copies of the underlying
+    files or directories.
+
+    The same rules as for resolve_symlinks apply regarding symlinks
+    not being dangling, going outside top_path or being to absolute
+    paths.  In addition, it is an error if a symlink points to a
+    directory containing itself, as that cannot be represented through
+    copies.
+
+    This is implemented in Python, rather than through just copying
+    the directory with following symlinks enabled while copying, to
+    ensure error conditions are detected reliably.
+
+    """
+    symlinks = {}
+    top_path_remove = '%s/' % top_path
+    top_path_remove_len = len(top_path_remove)
+    for dirpath, dirnames, filenames in os.walk(top_path):
+        if dirpath == top_path:
+            sub_path_tuple = ()
+        else:
+            if not dirpath.startswith(top_path_remove):
+                context.error('unexpected path %s from os.walk' % dirpath)
+            sub_path_tuple = tuple(dirpath[top_path_remove_len:].split('/'))
+        for name in dirnames + filenames:
+            full = os.path.join(dirpath, name)
+            mode = os.stat(full, follow_symlinks=False).st_mode
+            if stat.S_ISLNK(mode):
+                link_target = resolve_symlinks(context, top_path,
+                                               sub_path_tuple, name, False,
+                                               set())
+                link_tuple = sub_path_tuple + (name,)
+                symlinks[link_tuple] = link_target
+    # If a symlink A points to B, before A is replaced by a copy of B
+    # all symlinks under B must themselves have been replaced by
+    # copies of what they point to.
+    symlinks_under = collections.defaultdict(set)
+    for symlink in symlinks:
+        for sublen in range(len(symlink) + 1):
+            symlinks_under[symlink[:sublen]].add(symlink)
+    deps = {}
+    for symlink, target in symlinks.items():
+        symlink_str = '/'.join(symlink)
+        deps[symlink_str] = []
+        for under_target in symlinks_under[target]:
+            deps[symlink_str].append('/'.join(under_target))
+    # This tsort ensures an error if a symlink points to a directory
+    # containing itself (directly or indirectly, possibly after
+    # resolving other symlinks), and otherwise places the symlinks in
+    # an appropriate order for copying.
+    sorted_deps = tsort(context, deps)
+    for symlink in sorted_deps:
+        target = '/'.join(symlinks[tuple(symlink.split('/'))])
+        symlink_full = os.path.join(top_path, symlink)
+        target_full = os.path.join(top_path, target)
+        os.remove(symlink_full)
+        # There should in fact be no symlinks in the tree being
+        # copied.
+        mode = os.stat(target_full, follow_symlinks=False).st_mode
+        if stat.S_ISDIR(mode):
+            shutil.copytree(target_full, symlink_full, symlinks=True)
+        else:
+            shutil.copy2(target_full, symlink_full, follow_symlinks=False)
 
 
 def tar_command(output_name, top_dir_name, source_date_epoch):

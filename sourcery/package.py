@@ -24,7 +24,7 @@ import os
 import os.path
 import stat
 
-__all__ = ['fix_perms', 'hard_link_files', 'tar_command']
+__all__ = ['fix_perms', 'hard_link_files', 'resolve_symlinks', 'tar_command']
 
 
 _NOEX_PERM = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
@@ -90,6 +90,65 @@ def hard_link_files(context, path):
                                       % (first, name))
                 os.remove(name)
                 os.link(first, name)
+
+
+def resolve_symlinks(context, top_path, sub_path, link_name, require_dir,
+                     being_resolved):
+    """Given a path to a symbolic link, resolve it to a form not involving
+    any symbolic links.
+
+    top_path is the path to the top-level directory that no paths may
+    go outside in the course of resolution (whether through use of ..,
+    or through use of symlinks to absolute paths; symlinks to absolute
+    paths are not permitted even if those paths are inside top_path).
+    sub_path is a tuple, possibly empty, of the names of
+    subdirectories leading to the directory in which the symlink is
+    located (none of those names are themselves symlinks or '.' or
+    '..'); link_name is the name of the symbolic link therein.  If
+    require_dir, the symbolic link must resolve to a directory;
+    otherwise, it may resolve to a file (dangling symlinks are not
+    permitted).  being_resolved is a set of symlinks being resolved
+    (tuples with the path to the symlink) at the time it was required
+    to resolve this one; thus, if being_resolved contains this
+    symlink, it is an error.  The return value is a tuple of the
+    relative path to the destination of the link (empty, if it refers
+    to top_path).
+
+    """
+    new_path = sub_path + (link_name,)
+    new_path_full = os.path.join(top_path, *new_path)
+    if new_path in being_resolved:
+        context.error('symbolic link cycle: %s' % new_path_full)
+    being_resolved.add(new_path)
+    link_contents = os.readlink(new_path_full)
+    if link_contents.startswith('/'):
+        context.error('absolute symbolic link: %s' % new_path_full)
+    if link_contents.endswith('/'):
+        require_dir = True
+    link_elements = [d for d in link_contents.split('/') if d]
+    for pos, elt in enumerate(link_elements):
+        this_require_dir = require_dir or pos < len(link_elements) - 1
+        if elt == '.':
+            continue
+        if elt == '..':
+            if sub_path:
+                sub_path = sub_path[:-1]
+            else:
+                context.error('symbolic link goes outside %s: %s'
+                              % (top_path, new_path_full))
+            continue
+        elt_path = sub_path + (elt,)
+        elt_path_full = os.path.join(top_path, *elt_path)
+        mode = os.stat(elt_path_full, follow_symlinks=False).st_mode
+        if stat.S_ISLNK(mode):
+            sub_path = resolve_symlinks(context, top_path, sub_path, elt,
+                                        this_require_dir, being_resolved)
+        else:
+            if this_require_dir and not stat.S_ISDIR(mode):
+                context.error('not a directory: %s' % elt_path_full)
+            sub_path = elt_path
+    being_resolved.remove(new_path)
+    return sub_path
 
 
 def tar_command(output_name, top_dir_name, source_date_epoch):

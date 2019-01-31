@@ -26,8 +26,9 @@ import tarfile
 import tempfile
 import unittest
 
-from sourcery.context import ScriptContext
-from sourcery.package import fix_perms, hard_link_files, tar_command
+from sourcery.context import ScriptError, ScriptContext
+from sourcery.package import fix_perms, hard_link_files, resolve_symlinks, \
+    tar_command
 from sourcery.selftests.support import create_files, read_files
 
 __all__ = ['PackageTestCase']
@@ -115,6 +116,113 @@ class PackageTestCase(unittest.TestCase):
         self.assertEqual(stat_b2.st_nlink, 2)
         self.assertEqual(stat_b1.st_dev, stat_b2.st_dev)
         self.assertEqual(stat_b1.st_ino, stat_b2.st_ino)
+
+    def test_resolve_symlinks(self):
+        """Test the resolve_symlinks function."""
+        create_files(self.indir, ['b', 'x', 'x/e'],
+                     {'f': 'contents'},
+                     {'a': 'b/c/d', 'b/c': '././//../././b/../x//', 'x/d': 'e',
+                      'z': 'y', 'y': 'f', 'x/e/m': '../../', 'p': 'q/../',
+                      'q': 'x/e'})
+        being_resolved = set()
+        self.assertEqual(resolve_symlinks(self.context, self.indir, (), 'a',
+                                          False, being_resolved),
+                         ('x', 'e'))
+        self.assertEqual(being_resolved, set())
+        self.assertEqual(resolve_symlinks(self.context, self.indir, (), 'a',
+                                          True, being_resolved),
+                         ('x', 'e'))
+        self.assertEqual(being_resolved, set())
+        self.assertEqual(resolve_symlinks(self.context, self.indir, ('x', 'e'),
+                                          'm', False, being_resolved),
+                         ())
+        self.assertEqual(being_resolved, set())
+        self.assertEqual(resolve_symlinks(self.context, self.indir, ('x', 'e'),
+                                          'm', True, being_resolved),
+                         ())
+        self.assertEqual(being_resolved, set())
+        self.assertEqual(resolve_symlinks(self.context, self.indir, (), 'z',
+                                          False, being_resolved),
+                         ('f',))
+        self.assertEqual(being_resolved, set())
+        self.assertEqual(resolve_symlinks(self.context, self.indir, (), 'p',
+                                          False, being_resolved),
+                         ('x',))
+        self.assertEqual(being_resolved, set())
+        self.assertEqual(resolve_symlinks(self.context, self.indir, (), 'p',
+                                          True, being_resolved),
+                         ('x',))
+        self.assertEqual(being_resolved, set())
+
+    def test_resolve_symlinks_errors(self):
+        """Test errors from resolve_symlinks."""
+        create_files(self.indir, ['d1'],
+                     {'file': 'contents'},
+                     {'a': 'a',
+                      'b': 'c', 'c': 'd', 'd': 'b',
+                      'e': 'd1/f/g', 'd1/f': 'g', 'd1/g': '../e',
+                      'abs': self.indir, 'up': 'd1/../..', 'x': 'file/',
+                      'y': 'file/something', 'tofile': 'file'})
+        self.assertRaisesRegex(ScriptError,
+                               'symbolic link cycle',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'a', False, set())
+        self.assertRaisesRegex(ScriptError,
+                               'symbolic link cycle',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'a', True, set())
+        self.assertRaisesRegex(ScriptError,
+                               'symbolic link cycle',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'b', False, set())
+        self.assertRaisesRegex(ScriptError,
+                               'symbolic link cycle',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'b', True, set())
+        self.assertRaisesRegex(ScriptError,
+                               'symbolic link cycle',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'e', False, set())
+        self.assertRaisesRegex(ScriptError,
+                               'symbolic link cycle',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'e', True, set())
+        self.assertRaisesRegex(ScriptError,
+                               'absolute symbolic link',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'abs', False, set())
+        self.assertRaisesRegex(ScriptError,
+                               'absolute symbolic link',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'abs', True, set())
+        self.assertRaisesRegex(ScriptError,
+                               'symbolic link goes outside',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'up', False, set())
+        self.assertRaisesRegex(ScriptError,
+                               'symbolic link goes outside',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'up', True, set())
+        self.assertRaisesRegex(ScriptError,
+                               'not a directory',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'x', False, set())
+        self.assertRaisesRegex(ScriptError,
+                               'not a directory',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'x', True, set())
+        self.assertRaisesRegex(ScriptError,
+                               'not a directory',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'y', False, set())
+        self.assertRaisesRegex(ScriptError,
+                               'not a directory',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'y', True, set())
+        self.assertRaisesRegex(ScriptError,
+                               'not a directory',
+                               resolve_symlinks, self.context, self.indir,
+                               (), 'tofile', True, set())
 
     def test_tar_command(self):
         """Test the tar_command function."""

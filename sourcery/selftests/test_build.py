@@ -500,15 +500,22 @@ class BuildContextTestCase(unittest.TestCase):
         stat_a1 = os.stat(os.path.join(dir_out, 'a1'))
         self.assertEqual(stat_a1.st_nlink, 3)
         self.assertEqual(stat_a1.st_mtime, 1111199990)
+        stat_b = os.stat(os.path.join(dir_out, 'b'))
+        self.assertEqual(stat_b.st_nlink, 1)
+        self.assertEqual(stat_b.st_mtime, 1111199990)
         shutil.rmtree(dir_out)
         subprocess.run(['tar', '-x', '-f', pkg_1], cwd=self.tempdir)
         self.assertEqual(read_files(dir_out),
                          (set(),
-                          {'a1': 'a\n', 'a2': 'a\n', 'a3': 'a\n', 'b': 'b\n'},
-                          {'c': 'b'}))
+                          {'a1': 'a\n', 'a2': 'a\n', 'a3': 'a\n', 'b': 'b\n',
+                           'c': 'b\n'},
+                          {}))
         stat_a1 = os.stat(os.path.join(dir_out, 'a1'))
         self.assertEqual(stat_a1.st_nlink, 3)
         self.assertEqual(stat_a1.st_mtime, 1111199990)
+        stat_b = os.stat(os.path.join(dir_out, 'b'))
+        self.assertEqual(stat_b.st_nlink, 2)
+        self.assertEqual(stat_b.st_mtime, 1111199990)
 
     def test_run_build_src_package(self):
         """Test run_build, source and backup packages built."""

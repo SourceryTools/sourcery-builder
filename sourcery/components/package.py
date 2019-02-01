@@ -22,7 +22,8 @@ import os.path
 
 from sourcery.buildtask import BuildTask
 import sourcery.component
-from sourcery.package import fix_perms, hard_link_files, tar_command
+from sourcery.package import fix_perms, hard_link_files, replace_symlinks, \
+    tar_command
 
 __all__ = ['Component']
 
@@ -65,6 +66,9 @@ class Component(sourcery.component.Component):
         # empty).
         inst_out_main = os.path.join(inst_out_path, cfg.installdir_rel.get())
         pkg_out_task.add_create_dir(inst_out_main)
+        if not host.have_symlinks():
+            pkg_out_task.add_python(replace_symlinks,
+                                    (cfg.context, inst_out_main))
         pkg_out_task.add_python(fix_perms, (inst_out_main,))
         pkg_out_task.add_python(hard_link_files, (cfg.context, inst_out_main))
         # Creating the package-output install tree is separated from

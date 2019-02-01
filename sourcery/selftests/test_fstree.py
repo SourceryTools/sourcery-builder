@@ -428,6 +428,53 @@ class MapFSTreeTestCase(unittest.TestCase):
         tree_rm = tree.remove(['c'])
         self.assertFalse(tree_rm.is_dir)
 
+    def test_remove_recursive(self):
+        """Test removal of paths with '**' from MapFSTree objects."""
+        create_files(self.indir, ['foo', 'foo/bar'],
+                     {'a': 'file a', 'a.c': 'file a.c',
+                      'foo/a.c': 'file foo/a.c',
+                      'foo/bar/b.c': 'file foo/bar/b.c'},
+                     {})
+        tree = MapFSTreeCopy(self.context, self.indir)
+        tree_rm = tree.remove(['**/*.c'])
+        tree_rm.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         (set(),
+                          {'a': 'file a'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        tree_rm = tree.remove(['**/**/**/**/*.c'])
+        tree_rm.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         (set(),
+                          {'a': 'file a'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        tree_rm = tree.remove(['**/a.c'])
+        tree_rm.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'foo', 'foo/bar'},
+                          {'a': 'file a', 'foo/bar/b.c': 'file foo/bar/b.c'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        tree_rm = tree.remove(['*/**/a.c'])
+        tree_rm.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'foo', 'foo/bar'},
+                          {'a': 'file a', 'a.c': 'file a.c',
+                           'foo/bar/b.c': 'file foo/bar/b.c'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        # Only exactly '**' as a complete path component is special;
+        # other uses just act like '*'.
+        tree_rm = tree.remove(['***/*.c'])
+        tree_rm.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'foo', 'foo/bar'},
+                          {'a': 'file a', 'a.c': 'file a.c',
+                           'foo/bar/b.c': 'file foo/bar/b.c'},
+                          {}))
+
     def test_remove_errors(self):
         """Test errors removing paths from MapFSTree objects."""
         tree = MapFSTreeMap(self.context, {})
@@ -653,6 +700,22 @@ class FSTreeTestCase(unittest.TestCase):
                          ({'foo', 'foo/bar'},
                           {'a': 'file a', 'foo/b': 'file foo/b'},
                           {'file-symlink': 'a'}))
+
+    def test_remove_recursive(self):
+        """Test FSTreeRemove with '**'."""
+        ctree = FSTreeCopy(self.context, self.indir, {'foo/bar'})
+        tree = FSTreeRemove(ctree, ['**/*.c'])
+        self.assertEqual(tree.install_trees, {'foo/bar'})
+        create_files(self.indir, ['foo', 'foo/bar'],
+                     {'a': 'file a', 'a.c': 'file a.c',
+                      'foo/a.c': 'file foo/a.c',
+                      'foo/bar/b.c': 'file foo/bar/b.c'},
+                     {})
+        tree.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         (set(),
+                          {'a': 'file a'},
+                          {}))
 
     def test_remove_errors(self):
         """Test errors from FSTreeRemove."""

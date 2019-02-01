@@ -143,9 +143,12 @@ class MapFSTree:
         contents of directories are removed recursively; symlinks are
         not dereferenced, so e.g. 'foo/*' where foo is a symlink does
         not match anything.  fnmatch patterns may be used to match
-        individual components.  If removals result in a subdirectory
-        being empty where it was not empty before, that subdirectory
-        is removed.
+        individual components; a component of '**' refers to both the
+        directory it appears in and all files and subdirectories under
+        it, recursively, so 'foo/**/bar' matches all files called
+        'bar' located anywhere under 'foo'.  If removals result in a
+        subdirectory being empty where it was not empty before, that
+        subdirectory is removed.
 
         """
         for path in paths:
@@ -154,8 +157,17 @@ class MapFSTree:
         if not self.is_dir:
             return self
         ret = self._expand(True)
-        sub_paths = collections.defaultdict(set)
+        paths_exp = []
         for path in paths:
+            if path.startswith('**/'):
+                while path.startswith('**/'):
+                    path = path[3:]
+                paths_exp.append(path)
+                paths_exp.append('*/**/%s' % path)
+            else:
+                paths_exp.append(path)
+        sub_paths = collections.defaultdict(set)
+        for path in paths_exp:
             if '/' in path:
                 p_dir, p_rest = path.split('/', maxsplit=1)
                 p_dir_exp = fnmatch.filter(ret.name_map.keys(), p_dir)
@@ -183,8 +195,9 @@ class MapFSTree:
         directories are included recursively; symlinks are not
         dereferenced, so e.g. 'foo/*' where foo is a symlink does not
         match anything.  fnmatch patterns may be used to match
-        individual components.  Empty directories are only included in
-        the result where they match one of the given paths.
+        individual components; '**' is not handled specially.  Empty
+        directories are only included in the result where they match
+        one of the given paths.
 
         """
         if not self.is_dir:

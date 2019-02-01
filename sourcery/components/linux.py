@@ -20,7 +20,7 @@
 
 from sourcery.buildtask import BuildTask
 import sourcery.component
-from sourcery.fstree import FSTreeMove
+from sourcery.fstree import FSTreeMove, FSTreeRemove
 
 __all__ = ['Component']
 
@@ -66,6 +66,10 @@ def _contribute_headers_tree(cfg, host, host_group, is_build):
     host_b = host.build_cfg
     build = cfg.build.get().build_cfg
     tree = cfg.install_tree_fstree(build, _INST_NAME)
+    # headers_install installs empty .install files, and ..install.cmd
+    # files that hardcode build directory paths; these are not useful
+    # as part of the installed toolchain.
+    tree = FSTreeRemove(tree, ['**/..install.cmd', '**/.install'])
     # headers_install puts headers in an include/ subdirectory of the
     # given path.
     tree = FSTreeMove(tree, '%s/usr' % cfg.sysroot_rel.get())

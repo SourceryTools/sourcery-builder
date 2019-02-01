@@ -206,6 +206,9 @@ class Component(sourcery.component.Component):
                 ['%s/lib/gcc/%s/*/include' % (installdir_rel, target)])
             host_group.contribute_package(host, tree_libs)
             host_group.contribute_package(host, tree_libsubdir_include)
+        # libtool .la files contain paths with the configured prefix
+        # hardcoded, so do not work in relocated toolchains.
+        tree = FSTreeRemove(tree, ['**/*.la'])
         host_group.contribute_package(host, tree)
 
     @staticmethod

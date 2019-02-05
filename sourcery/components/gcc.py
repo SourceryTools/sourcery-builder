@@ -178,6 +178,10 @@ class Component(sourcery.component.Component):
             # them allowing duplicates with identical contents.
             installdir_rel = cfg.installdir_rel.get()
             tree_build = cfg.install_tree_fstree(build_b, 'gcc')
+            # libtool .la files contain paths with the configured
+            # prefix hardcoded, so do not work in relocated
+            # toolchains.
+            tree_build = FSTreeRemove(tree_build, ['**/*.la'])
             tree_libs = FSTreeExtract(
                 tree_build,
                 ['%s/%s/include/c++' % (installdir_rel, target),

@@ -28,6 +28,31 @@ from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeUnion
 __all__ = ['Component']
 
 
+def _contribute_sysroot_tree(cfg, host, host_group, is_build):
+    """Contribute the glibc installation to all required install trees."""
+    # This should run in a loop over multilibs, and arrange for a
+    # single set of headers to be used per sysroot headers suffix.
+    host_b = host.build_cfg
+    target = cfg.target.get()
+    target_build = BuildCfg(cfg.context, target)
+    tree = cfg.install_tree_fstree(target_build, 'glibc')
+    sysroot_rel = cfg.sysroot_rel.get()
+    tree = FSTreeMove(tree, sysroot_rel)
+    # Ensure lib directories exist so that GCC's use of paths such
+    # as lib/../lib64 works.
+    tree_lib = FSTreeMove(FSTreeEmpty(cfg.context),
+                          os.path.join(sysroot_rel, 'lib'))
+    tree_usr_lib = FSTreeMove(FSTreeEmpty(cfg.context),
+                              os.path.join(sysroot_rel, 'usr', 'lib'))
+    tree = FSTreeUnion(tree, tree_lib)
+    tree = FSTreeUnion(tree, tree_usr_lib)
+    if is_build:
+        host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
+                                               tree)
+        host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+    host_group.contribute_package(host, tree)
+
+
 class Component(sourcery.component.Component):
     """sourcery-builder glibc component implementation."""
 
@@ -94,37 +119,8 @@ class Component(sourcery.component.Component):
         install_task = BuildTask(cfg, group, 'install')
         install_task.add_make(['-j1', 'install', 'install_root=%s' % instdir],
                               objdir)
-        tree = cfg.install_tree_fstree(target_build, 'glibc')
-        sysroot_rel = cfg.sysroot_rel.get()
-        tree = FSTreeMove(tree, sysroot_rel)
-        # Ensure lib directories exist so that GCC's use of paths such
-        # as lib/../lib64 works.
-        tree_lib = FSTreeMove(FSTreeEmpty(cfg.context),
-                              os.path.join(sysroot_rel, 'lib'))
-        tree_usr_lib = FSTreeMove(FSTreeEmpty(cfg.context),
-                                  os.path.join(sysroot_rel, 'usr', 'lib'))
-        tree = FSTreeUnion(tree, tree_lib)
-        tree = FSTreeUnion(tree, tree_usr_lib)
-        host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
-                                               tree)
-        host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
-        host_group.contribute_package(host, tree)
+        _contribute_sysroot_tree(cfg, host, host_group, True)
 
     @staticmethod
     def add_build_tasks_for_other_hosts(cfg, host, component, host_group):
-        target = cfg.target.get()
-        # As for the first host, this should run in a loop over
-        # multilibs.
-        target_build = BuildCfg(cfg.context, target)
-        tree = cfg.install_tree_fstree(target_build, 'glibc')
-        sysroot_rel = cfg.sysroot_rel.get()
-        tree = FSTreeMove(tree, sysroot_rel)
-        # Ensure lib directories exist so that GCC's use of paths such
-        # as lib/../lib64 works.
-        tree_lib = FSTreeMove(FSTreeEmpty(cfg.context),
-                              os.path.join(sysroot_rel, 'lib'))
-        tree_usr_lib = FSTreeMove(FSTreeEmpty(cfg.context),
-                                  os.path.join(sysroot_rel, 'usr', 'lib'))
-        tree = FSTreeUnion(tree, tree_lib)
-        tree = FSTreeUnion(tree, tree_usr_lib)
-        host_group.contribute_package(host, tree)
+        _contribute_sysroot_tree(cfg, host, host_group, False)

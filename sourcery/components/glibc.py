@@ -83,6 +83,8 @@ class Component(sourcery.component.Component):
                       'sysdeps/sparc/sparc32/udiv.S',
                       'sysdeps/sparc/sparc32/urem.S']
 
+    sysrooted_libc = True
+
     @staticmethod
     def add_build_tasks_for_first_host(cfg, host, component, host_group):
         host_b = host.build_cfg

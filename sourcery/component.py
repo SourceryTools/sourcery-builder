@@ -78,6 +78,27 @@ class Component:
 
         """
 
+    sysrooted_libc = False
+    """Whether this component is a libc implementation using sysroot
+    directory arrangements.
+
+    If sysroot directory arrangements are used, arrangements within
+    each sysroot correspond to directory arrangements for libraries
+    used for native compilation on a system with this libc; there may
+    be multiple sysroot subdirectories, each of which uses such
+    arrangements.  If they are not used (typically for any case other
+    than libraries for Unix-like operating systems), there is no
+    concept of such native directory arrangements, and no subdirectory
+    sysroots; however, compilers may still be configured as sysrooted,
+    with symbolic links in place during the compiler build, so that
+    headers and libraries can be found at locations other than the
+    configured prefix during the compiler build.
+
+    Components that are not a libc should leave this as the default
+    False.
+
+    """
+
     @staticmethod
     def add_build_tasks_for_host(cfg, host, component, host_group):
         """Add any host-specific build tasks associated with this component.

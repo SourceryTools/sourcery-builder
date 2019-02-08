@@ -1,6 +1,6 @@
-# Initialize sourcery package.
+# sourcery-builder sysrooted_libc component for testing.
 
-# Copyright 2018-2019 Mentor Graphics Corporation.
+# Copyright 2019 Mentor Graphics Corporation.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as
@@ -16,8 +16,18 @@
 # License along with this program; if not, see
 # <https://www.gnu.org/licenses/>.
 
-"""Sourcery Builder package."""
+"""sourcery-builder sysrooted_libc component for testing."""
 
-__all__ = ['autoconf', 'build', 'buildcfg', 'buildtask', 'command',
-           'component', 'context', 'fstree', 'makefile', 'multilib', 'package',
-           'pkghost', 'relcfg', 'rpc', 'tsort', 'vc']
+import sourcery.selftests.component
+
+__all__ = ['Component']
+
+
+class Component(sourcery.selftests.component.Component):
+    """sysrooted_libc component implementation."""
+
+    @staticmethod
+    def add_release_config_vars(group):
+        group.source_type.set_implicit('open')
+
+    sysrooted_libc = True

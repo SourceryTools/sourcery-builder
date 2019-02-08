@@ -23,4 +23,4 @@ __all__ = ['add_rel_cfg_vars', 'build_fail_cd', 'build_fail_command',
            'build_package', 'build_src_closed', 'build_src_open', 'build_test',
            'configure_opts', 'depend1', 'depend2', 'depend3', 'files_to_touch',
            'files_to_touch_glob', 'generic', 'no_add_rel_cfg_vars',
-           'no_source_type', 'postcheckout', 'zz_no_source']
+           'no_source_type', 'postcheckout', 'sysrooted_libc', 'zz_no_source']

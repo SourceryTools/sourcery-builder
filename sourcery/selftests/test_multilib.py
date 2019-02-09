@@ -373,6 +373,24 @@ class MultilibTestCase(unittest.TestCase):
         self.assertIsInstance(multilib.build_cfg, BuildCfg)
         self.assertEqual(repr(multilib.build_cfg),
                          "BuildCfg('aarch64-linux-gnu')")
+        # Test default for osdir derived from non-default
+        # sysroot_suffix and sysroot_osdir settings.
+        multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
+                            (), sysroot_suffix='foo', sysroot_osdir='os')
+        multilib.finalize(relcfg)
+        self.assertEqual(multilib.osdir, 'os/foo')
+        multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
+                            (), sysroot_suffix='foo', sysroot_osdir='../lib64')
+        multilib.finalize(relcfg)
+        self.assertEqual(multilib.osdir, '../lib64/foo')
+        multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
+                            (), sysroot_suffix='.', sysroot_osdir='../lib64')
+        multilib.finalize(relcfg)
+        self.assertEqual(multilib.osdir, '../lib64')
+        multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
+                            (), sysroot_suffix='foo', sysroot_osdir='.')
+        multilib.finalize(relcfg)
+        self.assertEqual(multilib.osdir, 'foo')
 
     def test_finalize_errors(self):
         """Test errors from finalize."""

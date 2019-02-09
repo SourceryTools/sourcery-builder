@@ -32,6 +32,7 @@ import unittest.mock
 from sourcery.buildcfg import BuildCfg
 from sourcery.context import add_common_options, ScriptContext, ScriptError
 from sourcery.fstree import FSTreeCopy
+from sourcery.multilib import Multilib
 from sourcery.pkghost import PkgHost
 from sourcery.relcfg import ConfigVarType, ConfigVarTypeList, \
     ConfigVarTypeDict, ConfigVarTypeStrEnum, ConfigVar, ConfigVarGroup, \
@@ -544,9 +545,9 @@ class ConfigVarGroupTestCase(unittest.TestCase):
         self.assertEqual(group.list_vars(),
                          ['bootstrap_components_vc',
                           'bootstrap_components_version', 'build', 'env_set',
-                          'hosts', 'installdir', 'interp', 'pkg_build',
-                          'pkg_prefix', 'pkg_version', 'script_full',
-                          'source_date_epoch', 'target'])
+                          'hosts', 'installdir', 'interp', 'multilibs',
+                          'pkg_build', 'pkg_prefix', 'pkg_version',
+                          'script_full', 'source_date_epoch', 'target'])
         # Test each variable's default value and type constraints.
         self.assertEqual(group.bootstrap_components_vc.get(), {})
         self.assertRaisesRegex(ScriptError,
@@ -617,6 +618,15 @@ class ConfigVarGroupTestCase(unittest.TestCase):
                                'interp',
                                group.interp.set, None)
         group.interp.set('/path/to/python3')
+        self.assertEqual(group.multilibs.get(), ())
+        self.assertRaisesRegex(ScriptError,
+                               'bad type for value of release config variable '
+                               'multilibs',
+                               group.multilibs.set,
+                               (PkgHost(self.context, 'i686-pc-linux-gnu'),))
+        group.multilibs.set((Multilib(self.context, 'generic', 'generic',
+                                      ()),))
+        group.multilibs.set([Multilib(self.context, 'generic', 'generic', ())])
         self.assertEqual(group.pkg_build.get(), 1)
         self.assertRaisesRegex(ScriptError,
                                'bad type for value of release config variable '
@@ -1222,6 +1232,20 @@ class ReleaseConfigTestCase(unittest.TestCase):
         self.assertIs(relcfg.hosts.get()[0], relcfg.build.get())
         self.assertIsInstance(relcfg.hosts.get()[1], PkgHost)
         self.assertEqual(relcfg.hosts.get()[1].name, 'i686-pc-linux-gnu')
+        # Test multilibs are finalized, and that relevant settings can
+        # come after the multilib settings.
+        relcfg_text = ('cfg.multilibs.set((Multilib("generic", "generic", '
+                       '()),))\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertIs(relcfg.multilibs.get()[0].compiler,
+                      relcfg.get_component('generic'))
+        self.assertEqual(relcfg.multilibs.get()[0].osdir, '.')
+        self.assertEqual(relcfg.multilibs.get()[0].target, 'aarch64-linux-gnu')
         # Test internal variables set by __init__.
         self.assertEqual(relcfg.installdir_rel.get(), 'opt/toolchain')
         self.assertEqual(relcfg.bindir.get(), '/opt/toolchain/bin')
@@ -1446,6 +1470,18 @@ class ReleaseConfigTestCase(unittest.TestCase):
                                'first host not the same as build system',
                                ReleaseConfig, self.context, relcfg_text,
                                loader, self.args)
+        # Test errors from finalizing multilibs occur.
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.multilibs.set((Multilib("generic", "generic", '
+                       '(), sysroot_suffix="."),))\n')
+        self.assertRaisesRegex(ScriptError,
+                               'sysroot suffix for non-sysrooted libc',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
         relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
                        'cfg.target.set("aarch64-linux-gnu")\n'
                        'cfg.add_component("no_source_type")\n')
@@ -1500,7 +1536,7 @@ class ReleaseConfigTestCase(unittest.TestCase):
                          ['bindir', 'bindir_rel', 'bootstrap_components_vc',
                           'bootstrap_components_version', 'build', 'env_set',
                           'hosts', 'info_dir_rel', 'installdir',
-                          'installdir_rel', 'interp', 'pkg_build',
+                          'installdir_rel', 'interp', 'multilibs', 'pkg_build',
                           'pkg_name_full', 'pkg_name_no_target_build',
                           'pkg_name_no_version', 'pkg_prefix', 'pkg_version',
                           'script_full', 'source_date_epoch', 'sysroot',

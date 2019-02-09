@@ -26,6 +26,8 @@ import time
 
 import sourcery.buildcfg
 from sourcery.fstree import FSTreeCopy
+import sourcery.multilib
+from sourcery.multilib import Multilib
 import sourcery.pkghost
 from sourcery.pkghost import PkgHost
 import sourcery.vc
@@ -353,6 +355,19 @@ class ConfigVarGroup:
                      describes the main target.  This is a string, not a
                      BuildCfg, since the tools may support several multilibs,
                      each of which has its own BuildCfg.""")
+        self.add_var('multilibs',
+                     ConfigVarTypeList(ConfigVarType(self.context, Multilib)),
+                     (),
+                     """A list of Multilib objects for the multilibs for which
+                     this config builds and installs target library code.
+
+                     The Multilib objects are unfinalized when this variable is
+                     set, and finalized as part of the process of loading the
+                     release config.
+
+                     Multilib objects that describe configurations only used in
+                     testing, but not used for building packaged code, are not
+                     included in the value of this variable.""")
         self.add_var('installdir', ConfigVarType(self.context, str),
                      '/opt/toolchain',
                      """The configured prefix for the host tools built by this
@@ -585,6 +600,7 @@ class ReleaseConfigLoader:
         cfg_vars = {'cfg': relcfg}
         self.add_cfg_vars_extra(relcfg, cfg_vars, name)
         context_wrap = [(sourcery.buildcfg, 'BuildCfg'),
+                        (sourcery.multilib, 'Multilib'),
                         (sourcery.pkghost, 'PkgHost'),
                         (sourcery.vc, 'GitVC'),
                         (sourcery.vc, 'SvnVC'),
@@ -959,6 +975,8 @@ class ReleaseConfig:
                                """Source directory for this component.""",
                                internal=True)
         self._components_full = tuple(self._components_full)
+        for multilib in self.multilibs.get():
+            multilib.finalize(self)
         self._vg.finalize()
 
     def __getattr__(self, name):

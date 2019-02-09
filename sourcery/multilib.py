@@ -92,6 +92,7 @@ class Multilib:
         self._save_osdir = osdir
         self._save_target = target
         self._finalized = False
+        self._relcfg = None
         # These are ComponentInConfig objects after finalization.
         self.compiler = None
         self.libc = None
@@ -105,11 +106,47 @@ class Multilib:
         self.target = None
         self.build_cfg = None
 
+    def __repr__(self):
+        """Return a textual representation of a Multilib object.
+
+        The representation is in the form a Multilib call might appear
+        in a release config, omitting the context argument.
+
+        """
+        ml_args = []
+        ml_args.append(repr(self.compiler.copy_name))
+        if self.libc is None:
+            ml_args.append('None')
+        else:
+            ml_args.append(repr(self.libc.copy_name))
+        ml_args.append(repr(self.ccopts))
+        if self.sysroot_suffix is not None and (self.sysroot_suffix != '.'
+                                                or self.libc is None):
+            ml_args.append('sysroot_suffix=%s' % repr(self.sysroot_suffix))
+        if self.headers_suffix is not None and self.headers_suffix != '.':
+            ml_args.append('headers_suffix=%s' % repr(self.headers_suffix))
+        if self.sysroot_osdir is not None and self.sysroot_osdir != '.':
+            ml_args.append('sysroot_osdir=%s' % repr(self.sysroot_osdir))
+        if self.osdir != self._default_osdir():
+            ml_args.append('osdir=%s' % repr(self.osdir))
+        if self.target != self._relcfg.target.get():
+            ml_args.append('target=%s' % repr(self.target))
+        return 'Multilib(%s)' % ', '.join(ml_args)
+
+    def _default_osdir(self):
+        """Return the default osdir setting for this Multilib."""
+        if self.sysroot_suffix is not None:
+            return os.path.normpath(os.path.join(self.sysroot_osdir,
+                                                 self.sysroot_suffix))
+        else:
+            return '.'
+
     def finalize(self, relcfg):
         """Finalize this Multilib for use with the given release config."""
         if self._finalized:
             self.context.error('multilib already finalized')
         self._finalized = True
+        self._relcfg = relcfg
         self.compiler = relcfg.get_component(self._save_compiler)
         if self._save_libc is not None:
             self.libc = relcfg.get_component(self._save_libc)
@@ -138,11 +175,8 @@ class Multilib:
             self.sysroot_osdir = None
         if self._save_osdir is not None:
             self.osdir = self._save_osdir
-        elif sysrooted:
-            self.osdir = os.path.normpath(os.path.join(self.sysroot_osdir,
-                                                       self.sysroot_suffix))
         else:
-            self.osdir = '.'
+            self.osdir = self._default_osdir()
         self.target = (self._save_target
                        if self._save_target is not None
                        else relcfg.target.get())

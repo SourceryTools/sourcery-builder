@@ -65,6 +65,185 @@ class MultilibTestCase(unittest.TestCase):
                                Multilib, self.context, 'gcc', 'glibc',
                                '-msomething')
 
+    def test_repr(self):
+        """Test __repr__."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.add_component("sysrooted_libc")\n'
+                       'cfg.sysrooted_libc.vc.set(GitVC("dummy"))\n'
+                       'cfg.sysrooted_libc.version.set("1.23")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        # Test sysrooted libc case, non-default settings for everything.
+        multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
+                            ('-mx', '-my'), sysroot_suffix='foo',
+                            headers_suffix='foo2', sysroot_osdir='os',
+                            osdir='os2', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', 'sysrooted_libc', "
+                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "headers_suffix='foo2', sysroot_osdir='os', "
+                         "osdir='os2', target='other')")
+        # Test variants with some settings as defaults.
+        multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
+                            ('-mx', '-my'), sysroot_suffix='.',
+                            headers_suffix='foo2', sysroot_osdir='os',
+                            osdir='os2', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', 'sysrooted_libc', "
+                         "('-mx', '-my'), "
+                         "headers_suffix='foo2', sysroot_osdir='os', "
+                         "osdir='os2', target='other')")
+        multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
+                            ('-mx', '-my'), sysroot_suffix='foo',
+                            headers_suffix='.', sysroot_osdir='os',
+                            osdir='os2', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', 'sysrooted_libc', "
+                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "sysroot_osdir='os', "
+                         "osdir='os2', target='other')")
+        multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
+                            ('-mx', '-my'), sysroot_suffix='foo',
+                            headers_suffix='foo2', sysroot_osdir='.',
+                            osdir='os2', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', 'sysrooted_libc', "
+                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "headers_suffix='foo2', "
+                         "osdir='os2', target='other')")
+        multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
+                            ('-mx', '-my'), sysroot_suffix='foo',
+                            headers_suffix='foo2', sysroot_osdir='os',
+                            osdir='os/foo', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', 'sysrooted_libc', "
+                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "headers_suffix='foo2', sysroot_osdir='os', "
+                         "target='other')")
+        multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
+                            ('-mx', '-my'), sysroot_suffix='foo',
+                            headers_suffix='foo2', sysroot_osdir='os',
+                            osdir='os2', target='aarch64-linux-gnu')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', 'sysrooted_libc', "
+                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "headers_suffix='foo2', sysroot_osdir='os', "
+                         "osdir='os2')")
+        # Test non-sysrooted libc case, non-default settings.
+        multilib = Multilib(self.context, 'generic', 'generic',
+                            ('-mx', '-my'), osdir='os2', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', 'generic', "
+                         "('-mx', '-my'), osdir='os2', target='other')")
+        # Test variants with some settings as defaults.
+        multilib = Multilib(self.context, 'generic', 'generic',
+                            ('-mx', '-my'), osdir='.', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', 'generic', "
+                         "('-mx', '-my'), target='other')")
+        multilib = Multilib(self.context, 'generic', 'generic',
+                            ('-mx', '-my'), osdir='os2',
+                            target='aarch64-linux-gnu')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', 'generic', "
+                         "('-mx', '-my'), osdir='os2')")
+        # Test no libc component, sysrooted, non-default settings.
+        multilib = Multilib(self.context, 'generic', None,
+                            ('-mx', '-my'), sysroot_suffix='foo',
+                            headers_suffix='foo2', sysroot_osdir='os',
+                            osdir='os2', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', None, "
+                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "headers_suffix='foo2', sysroot_osdir='os', "
+                         "osdir='os2', target='other')")
+        # Test variants with some settings as defaults.
+        multilib = Multilib(self.context, 'generic', None,
+                            ('-mx', '-my'), sysroot_suffix='.',
+                            headers_suffix='foo2', sysroot_osdir='os',
+                            osdir='os2', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', None, "
+                         "('-mx', '-my'), sysroot_suffix='.', "
+                         "headers_suffix='foo2', sysroot_osdir='os', "
+                         "osdir='os2', target='other')")
+        multilib = Multilib(self.context, 'generic', None,
+                            ('-mx', '-my'), sysroot_suffix='foo',
+                            headers_suffix='.', sysroot_osdir='os',
+                            osdir='os2', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', None, "
+                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "sysroot_osdir='os', "
+                         "osdir='os2', target='other')")
+        multilib = Multilib(self.context, 'generic', None,
+                            ('-mx', '-my'), sysroot_suffix='foo',
+                            headers_suffix='foo2', sysroot_osdir='.',
+                            osdir='os2', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', None, "
+                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "headers_suffix='foo2', "
+                         "osdir='os2', target='other')")
+        multilib = Multilib(self.context, 'generic', None,
+                            ('-mx', '-my'), sysroot_suffix='foo',
+                            headers_suffix='foo2', sysroot_osdir='os',
+                            osdir='os/foo', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', None, "
+                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "headers_suffix='foo2', sysroot_osdir='os', "
+                         "target='other')")
+        multilib = Multilib(self.context, 'generic', None,
+                            ('-mx', '-my'), sysroot_suffix='foo',
+                            headers_suffix='foo2', sysroot_osdir='os',
+                            osdir='os2', target='aarch64-linux-gnu')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', None, "
+                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "headers_suffix='foo2', sysroot_osdir='os', "
+                         "osdir='os2')")
+        # Test no libc component, non-sysrooted, non-default settings.
+        multilib = Multilib(self.context, 'generic', None,
+                            ('-mx', '-my'), osdir='os2', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', None, "
+                         "('-mx', '-my'), osdir='os2', target='other')")
+        # Test variants with some settings as defaults.
+        multilib = Multilib(self.context, 'generic', None,
+                            ('-mx', '-my'), osdir='.', target='other')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', None, "
+                         "('-mx', '-my'), target='other')")
+        multilib = Multilib(self.context, 'generic', None,
+                            ('-mx', '-my'), osdir='os2',
+                            target='aarch64-linux-gnu')
+        multilib.finalize(relcfg)
+        self.assertEqual(repr(multilib),
+                         "Multilib('generic', None, "
+                         "('-mx', '-my'), osdir='os2')")
+
     def test_finalize(self):
         """Test finalize."""
         loader = ReleaseConfigTextLoader()

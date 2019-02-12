@@ -1246,6 +1246,17 @@ class ReleaseConfigTestCase(unittest.TestCase):
                       relcfg.get_component('generic'))
         self.assertEqual(relcfg.multilibs.get()[0].osdir, '.')
         self.assertEqual(relcfg.multilibs.get()[0].target, 'aarch64-linux-gnu')
+        # Test OK case with more than one multilib.
+        relcfg_text = ('cfg.multilibs.set((Multilib("generic", "generic", '
+                       '()), Multilib("generic", "generic", (), osdir="x")))\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        self.assertEqual(relcfg.multilibs.get()[0].osdir, '.')
+        self.assertEqual(relcfg.multilibs.get()[1].osdir, 'x')
         # Test internal variables set by __init__.
         self.assertEqual(relcfg.installdir_rel.get(), 'opt/toolchain')
         self.assertEqual(relcfg.bindir.get(), '/opt/toolchain/bin')
@@ -1523,6 +1534,18 @@ class ReleaseConfigTestCase(unittest.TestCase):
         self.assertRaisesRegex(ScriptError,
                                'no version control location specified for '
                                'generic',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        # Test consistency checks for multilibs.
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.multilibs.set((Multilib("generic", "generic", '
+                       '()), Multilib("generic", "generic", ())))\n')
+        self.assertRaisesRegex(ScriptError,
+                               'two multilibs have same osdir value',
                                ReleaseConfig, self.context, relcfg_text,
                                loader, self.args)
 

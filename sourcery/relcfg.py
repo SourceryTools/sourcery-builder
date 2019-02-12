@@ -975,8 +975,20 @@ class ReleaseConfig:
                                """Source directory for this component.""",
                                internal=True)
         self._components_full = tuple(self._components_full)
-        for multilib in self.multilibs.get():
+        multilib_list = self.multilibs.get()
+        for multilib in multilib_list:
             multilib.finalize(self)
+        # Check the list of multilibs to make sure no two multilibs
+        # would be installing conflicting files in the same place (the
+        # case of multilibs sharing a sysroot but with different osdir
+        # settings therein is allowed, with separate code dealing with
+        # avoiding conflicts).  These checks will need updating if
+        # support is added for multilibs for different compiler
+        # targets, where having the same osdir does not mean a
+        # conflict.
+        # All multilibs must have different osdir settings.
+        if len({m.osdir for m in multilib_list}) != len(multilib_list):
+            self.context.error('two multilibs have same osdir value')
         self._vg.finalize()
 
     def __getattr__(self, name):

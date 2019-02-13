@@ -1257,6 +1257,22 @@ class ReleaseConfigTestCase(unittest.TestCase):
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         self.assertEqual(relcfg.multilibs.get()[0].osdir, '.')
         self.assertEqual(relcfg.multilibs.get()[1].osdir, 'x')
+        # Likewise, more than one sysrooted multilib.
+        relcfg_text = ('cfg.multilibs.set((Multilib("generic", '
+                       '"sysrooted_libc", ()), Multilib("generic", '
+                       '"sysrooted_libc", (), sysroot_osdir="../lib64"), '
+                       'Multilib("generic", "sysrooted_libc", (), '
+                       'sysroot_suffix="x"), Multilib("generic", '
+                       '"sysrooted_libc", (), sysroot_suffix="x", '
+                       'sysroot_osdir="../lib64")))\n'
+                       'cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.add_component("sysrooted_libc")\n'
+                       'cfg.sysrooted_libc.vc.set(GitVC("dummy"))\n'
+                       'cfg.sysrooted_libc.version.set("1.23")\n')
         # Test internal variables set by __init__.
         self.assertEqual(relcfg.installdir_rel.get(), 'opt/toolchain')
         self.assertEqual(relcfg.bindir.get(), '/opt/toolchain/bin')
@@ -1546,6 +1562,22 @@ class ReleaseConfigTestCase(unittest.TestCase):
                        '()), Multilib("generic", "generic", ())))\n')
         self.assertRaisesRegex(ScriptError,
                                'two multilibs have same osdir value',
+                               ReleaseConfig, self.context, relcfg_text,
+                               loader, self.args)
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.add_component("sysrooted_libc")\n'
+                       'cfg.sysrooted_libc.vc.set(GitVC("dummy"))\n'
+                       'cfg.sysrooted_libc.version.set("1.23")\n'
+                       'cfg.multilibs.set((Multilib("generic", '
+                       '"sysrooted_libc", (), osdir="x"), Multilib("generic", '
+                       '"sysrooted_libc", ())))\n')
+        self.assertRaisesRegex(ScriptError,
+                               'two multilibs in same sysroot have same '
+                               'sysroot_osdir value',
                                ReleaseConfig, self.context, relcfg_text,
                                loader, self.args)
 

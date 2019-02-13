@@ -989,6 +989,14 @@ class ReleaseConfig:
         # All multilibs must have different osdir settings.
         if len({m.osdir for m in multilib_list}) != len(multilib_list):
             self.context.error('two multilibs have same osdir value')
+        # All multilibs sharing a sysroot must have different
+        # sysroot_osdir settings.
+        sysroot_multilib_list = [m for m in multilib_list
+                                 if m.sysroot_suffix is not None]
+        if len({(m.sysroot_suffix, m.sysroot_osdir)
+                for m in sysroot_multilib_list}) != len(sysroot_multilib_list):
+            self.context.error('two multilibs in same sysroot have same '
+                               'sysroot_osdir value')
         self._vg.finalize()
 
     def __getattr__(self, name):

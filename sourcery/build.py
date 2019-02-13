@@ -91,6 +91,13 @@ class BuildContext:
                     component.cls.add_build_tasks_for_other_hosts(relcfg, host,
                                                                   component,
                                                                   host_task)
+                for multilib in relcfg.multilibs.get():
+                    if first_host:
+                        component.cls.add_build_tasks_for_first_host_multilib(
+                            relcfg, host, component, host_task, multilib)
+                    else:
+                        component.cls.add_build_tasks_for_other_hosts_multilib(
+                            relcfg, host, component, host_task, multilib)
             first_host = False
         build_objdir = self.build_objdir
         if os.access(build_objdir, os.F_OK):

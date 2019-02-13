@@ -81,6 +81,34 @@ class Component(sourcery.selftests.component.Component):
         task.add_python(py_test_fn, ('test', 'python'))
 
     @staticmethod
+    def add_build_tasks_for_first_host_multilib(cfg, host, component,
+                                                host_group, multilib):
+        task = BuildTask(cfg, host_group,
+                         'first-multi-%s' % multilib.build_cfg.name)
+        host_b = host.build_cfg
+        objdir = cfg.objdir_path(host_b,
+                                 '%s-first-%s' % (component.copy_name,
+                                                  multilib.build_cfg.name))
+        task.add_empty_dir(objdir)
+        task.add_command(['sh', '-c',
+                          'echo "%s" > %s/out' % (multilib.build_cfg.name,
+                                                  objdir)])
+
+    @staticmethod
+    def add_build_tasks_for_other_hosts_multilib(cfg, host, component,
+                                                 host_group, multilib):
+        task = BuildTask(cfg, host_group,
+                         'other-multi-%s' % multilib.build_cfg.name)
+        host_b = host.build_cfg
+        objdir = cfg.objdir_path(host_b,
+                                 '%s-other-%s' % (component.copy_name,
+                                                  multilib.build_cfg.name))
+        task.add_empty_dir(objdir)
+        task.add_command(['sh', '-c',
+                          'echo "test %s" > %s/out' % (multilib.build_cfg.name,
+                                                       objdir)])
+
+    @staticmethod
     def add_build_tasks_init(cfg, component, init_group):
         task = BuildTask(cfg, init_group, 'init')
         objdir = cfg.objdir_path(None, '%s-init' % component.copy_name)

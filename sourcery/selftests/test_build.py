@@ -285,7 +285,10 @@ class BuildContextTestCase(unittest.TestCase):
 
     def test_run_build(self):
         """Test run_build, simple successful build."""
-        self.setup_rc('cfg.add_component("build_test")\n')
+        self.setup_rc('cfg.add_component("build_test")\n'
+                      'cfg.multilibs.set((Multilib("build_test", '
+                      '"build_test", ()), Multilib("build_test", '
+                      '"build_test", ("-mtest",), osdir="test")))\n')
         with self.redirect_stdout_stderr():
             self.build_context.run_build()
         stdout, stderr = self.stdout_stderr_read()
@@ -321,6 +324,30 @@ class BuildContextTestCase(unittest.TestCase):
                          (set(),
                           {'out': 'test python\n'},
                           {}))
+        first_objdir_m0 = self.relcfg.objdir_path(
+            host_b0, 'build_test-first-aarch64-linux-gnu')
+        first_objdir_m1 = self.relcfg.objdir_path(
+            host_b0, 'build_test-first-aarch64-linux-gnu-mtest')
+        other_objdir_m0 = self.relcfg.objdir_path(
+            host_b1, 'build_test-other-aarch64-linux-gnu')
+        other_objdir_m1 = self.relcfg.objdir_path(
+            host_b1, 'build_test-other-aarch64-linux-gnu-mtest')
+        self.assertEqual(read_files(first_objdir_m0),
+                         (set(),
+                          {'out': 'aarch64-linux-gnu\n'},
+                          {}))
+        self.assertEqual(read_files(first_objdir_m1),
+                         (set(),
+                          {'out': 'aarch64-linux-gnu-mtest\n'},
+                          {}))
+        self.assertEqual(read_files(other_objdir_m0),
+                         (set(),
+                          {'out': 'test aarch64-linux-gnu\n'},
+                          {}))
+        self.assertEqual(read_files(other_objdir_m1),
+                         (set(),
+                          {'out': 'test aarch64-linux-gnu-mtest\n'},
+                          {}))
         init_objdir = self.relcfg.objdir_path(None, 'build_test-init')
         host_indep_objdir = self.relcfg.objdir_path(None,
                                                     'build_test-host-indep')
@@ -339,13 +366,13 @@ class BuildContextTestCase(unittest.TestCase):
                           {}))
         self.assertEqual(stdout, '')
         lines = stderr.splitlines()
-        self.assertEqual(len(lines), 28)
+        self.assertEqual(len(lines), 36)
         for line in lines:
             self.assertRegex(line,
                              r'^\[[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\] '
-                             r'\[00[0-1][0-9]/0014\] /.*(start|end)\Z')
-        self.assertIn('[0001/0014]', stderr)
-        self.assertIn('[0014/0014]', stderr)
+                             r'\[00[0-1][0-9]/0018\] /.*(start|end)\Z')
+        self.assertIn('[0001/0018]', stderr)
+        self.assertIn('[0018/0018]', stderr)
         self.assertIn('/x86_64-linux-gnu/all-hosts start', stderr)
         self.assertIn('/x86_64-w64-mingw32/other-hosts end', stderr)
         self.assertIn('/install-trees-x86_64-linux-gnu/package-input start',

@@ -135,6 +135,53 @@ class Component:
         """
 
     @staticmethod
+    def add_build_tasks_for_first_host_multilib(cfg, host, component,
+                                                host_group, multilib):
+        """Add any host-specific build tasks associated with this component
+        that should run for the first host only, for the given
+        multilib.
+
+        Such tasks should be added with 'host_group' (a group
+        containing tasks to be run in parallel) as their parent; 'cfg'
+        is the release config and 'host' is the corresponding PkgHost
+        object.  'component' is the ComponentInConfig object.
+
+        This is called for each multilib, and should just return for
+        inappropriate multilibs (for example, if the component is a
+        libc implementation, it would return without adding build
+        tasks for any multilibs for other libcs; if it's building some
+        other program to be installed in the sysroot, it would return
+        without adding build tasks for multilibs using a
+        previously-built sysroot).
+
+        """
+
+    @staticmethod
+    def add_build_tasks_for_other_hosts_multilib(cfg, host, component,
+                                                 host_group, multilib):
+        """Add any host-specific build tasks associated with this component
+        that should run for host other than the first host only, for
+        the given multilib.
+
+        Such tasks should be added with 'host_group' (a group
+        containing tasks to be run in parallel) as their parent; 'cfg'
+        is the release config and 'host' is the corresponding PkgHost
+        object.  'component' is the ComponentInConfig object.
+
+        This is called for each multilib, and should just return for
+        inappropriate multilibs (for example, if the component is a
+        libc implementation, it would return for any multilibs for
+        other libcs).
+
+        Multilib-specific tasks typically relate to target code, which
+        only needs to be built for one host.  Thus, this function
+        would typically only deal with contributing install trees,
+        built for the first host, to the package for some other host,
+        not with building anything itself.
+
+        """
+
+    @staticmethod
     def add_build_tasks_init(cfg, component, init_group):
         """Add any initialization build tasks associated with this component.
 

@@ -18,9 +18,11 @@
 
 """sourcery-builder linux component."""
 
+import os.path
+
 from sourcery.buildtask import BuildTask
 import sourcery.component
-from sourcery.fstree import FSTreeMove, FSTreeRemove
+from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeRemove, FSTreeUnion
 
 __all__ = ['Component']
 
@@ -71,16 +73,25 @@ def _contribute_headers_tree(cfg, host, host_group, is_build):
     # as part of the installed toolchain.
     tree = FSTreeRemove(tree, ['**/..install.cmd', '**/.install'])
     # headers_install puts headers in an include/ subdirectory of the
-    # given path.
-    tree = FSTreeMove(tree, '%s/usr' % cfg.sysroot_rel.get())
+    # given path.  This must end up in usr/include for each sysroot
+    # headers suffix for which a sysroot is shipped with the
+    # toolchain.
+    ctree = FSTreeEmpty(cfg.context)
+    suffixes = sorted({m.headers_suffix for m in cfg.multilibs.get()
+                       if m.libc is not None and m.headers_suffix is not None})
+    for suffix in suffixes:
+        suffix_usr = os.path.normpath(os.path.join(suffix, 'usr'))
+        moved_tree = FSTreeMove(tree,
+                                '%s/%s' % (cfg.sysroot_rel.get(), suffix_usr))
+        ctree = FSTreeUnion(ctree, moved_tree)
     if is_build:
         host_group.contribute_implicit_install(host_b, 'toolchain-1-before',
-                                               tree)
-        host_group.contribute_implicit_install(host_b, 'toolchain-1', tree)
+                                               ctree)
+        host_group.contribute_implicit_install(host_b, 'toolchain-1', ctree)
         host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
-                                               tree)
-        host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
-    host_group.contribute_package(host, tree)
+                                               ctree)
+        host_group.contribute_implicit_install(host_b, 'toolchain-2', ctree)
+    host_group.contribute_package(host, ctree)
 
 
 class Component(sourcery.component.Component):

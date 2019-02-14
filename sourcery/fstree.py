@@ -151,6 +151,9 @@ class MapFSTree:
         subdirectory is removed.
 
         """
+        if isinstance(paths, str):
+            self.context.error('paths must be a list of strings, not a single '
+                               'string')
         for path in paths:
             if _invalid_path(path):
                 self.context.error('invalid path to remove: %s' % path)
@@ -202,6 +205,9 @@ class MapFSTree:
         """
         if not self.is_dir:
             self.context.error('extracting paths from non-directory')
+        if isinstance(paths, str):
+            self.context.error('paths must be a list of strings, not a single '
+                               'string')
         for path in paths:
             if _invalid_path(path):
                 self.context.error('invalid path to extract: %s' % path)
@@ -432,6 +438,9 @@ class FSTreeRemove(FSTree):
 
         """
         self.context = other.context
+        if isinstance(paths, str):
+            self.context.error('paths must be a list of strings, not a single '
+                               'string')
         for path in paths:
             if _invalid_path(path):
                 self.context.error('invalid path to remove: %s' % path)
@@ -453,6 +462,9 @@ class FSTreeExtract(FSTree):
 
         """
         self.context = other.context
+        if isinstance(paths, str):
+            self.context.error('paths must be a list of strings, not a single '
+                               'string')
         for path in paths:
             if _invalid_path(path):
                 self.context.error('invalid path to extract: %s' % path)

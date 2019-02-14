@@ -479,6 +479,10 @@ class MapFSTreeTestCase(unittest.TestCase):
         """Test errors removing paths from MapFSTree objects."""
         tree = MapFSTreeMap(self.context, {})
         self.assertRaisesRegex(ScriptError,
+                               'paths must be a list of strings, not a single '
+                               'string',
+                               tree.remove, 'test')
+        self.assertRaisesRegex(ScriptError,
                                r'invalid path to remove: \.',
                                tree.remove, ['.'])
         self.assertRaisesRegex(ScriptError,
@@ -552,6 +556,10 @@ class MapFSTreeTestCase(unittest.TestCase):
                                r'extracting paths from non-directory',
                                tree_link.extract, [])
         tree = MapFSTreeMap(self.context, {})
+        self.assertRaisesRegex(ScriptError,
+                               'paths must be a list of strings, not a single '
+                               'string',
+                               tree.extract, 'test')
         self.assertRaisesRegex(ScriptError,
                                r'invalid path to extract: \.',
                                tree.extract, ['.'])
@@ -721,6 +729,10 @@ class FSTreeTestCase(unittest.TestCase):
         """Test errors from FSTreeRemove."""
         ctree = FSTreeCopy(self.context, self.indir, {'foo/bar'})
         self.assertRaisesRegex(ScriptError,
+                               'paths must be a list of strings, not a single '
+                               'string',
+                               FSTreeRemove, ctree, 'test')
+        self.assertRaisesRegex(ScriptError,
                                r'invalid path to remove: \.',
                                FSTreeRemove, ctree, ['.'])
         self.assertRaisesRegex(ScriptError,
@@ -765,6 +777,10 @@ class FSTreeTestCase(unittest.TestCase):
     def test_extract_errors(self):
         """Test errors from FSTreeExtract."""
         ctree = FSTreeCopy(self.context, self.indir, {'foo/bar'})
+        self.assertRaisesRegex(ScriptError,
+                               'paths must be a list of strings, not a single '
+                               'string',
+                               FSTreeExtract, ctree, 'test')
         self.assertRaisesRegex(ScriptError,
                                r'invalid path to extract: \.',
                                FSTreeExtract, ctree, ['.'])

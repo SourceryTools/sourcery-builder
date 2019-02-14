@@ -18,25 +18,28 @@
 
 """sourcery-builder glibc component."""
 
+import collections
 import os.path
 
-from sourcery.buildcfg import BuildCfg
 from sourcery.buildtask import BuildTask
 import sourcery.component
-from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeUnion
+from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeRemove, \
+    FSTreeExtract, FSTreeUnion
 
 __all__ = ['Component']
 
 
-def _contribute_sysroot_tree(cfg, host, host_group, is_build):
+def _contribute_sysroot_tree(cfg, host, host_group, is_build, multilib):
     """Contribute the glibc installation to all required install trees."""
-    # This should run in a loop over multilibs, and arrange for a
-    # single set of headers to be used per sysroot headers suffix.
     host_b = host.build_cfg
-    target = cfg.target.get()
-    target_build = BuildCfg(cfg.context, target)
+    target_build = multilib.build_cfg
     tree = cfg.install_tree_fstree(target_build, 'glibc')
+    # Headers must be unified for each sysroot headers suffix, so are
+    # handled separately.
+    tree = FSTreeRemove(tree, ['usr/include'])
     sysroot_rel = cfg.sysroot_rel.get()
+    sysroot_rel = os.path.normpath(os.path.join(sysroot_rel,
+                                                multilib.sysroot_suffix))
     tree = FSTreeMove(tree, sysroot_rel)
     # Ensure lib directories exist so that GCC's use of paths such
     # as lib/../lib64 works.
@@ -51,6 +54,38 @@ def _contribute_sysroot_tree(cfg, host, host_group, is_build):
                                                tree)
         host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
     host_group.contribute_package(host, tree)
+
+
+def _contribute_headers_tree(cfg, host, component, host_group, is_build):
+    """Contribute the glibc headers to all required install trees."""
+    host_b = host.build_cfg
+    sysroot_rel = cfg.sysroot_rel.get()
+    # Most glibc headers should be the same between multilibs, but
+    # some headers (gnu/stubs.h, gnu/lib-names.h) are set up to have
+    # per-ABI conditionals and include per-ABI header variants that
+    # are only installed for glibc built for that ABI.  Thus, form a
+    # union of all the headers for multilibs using a given headers
+    # suffix, allowing duplicate files.  (Normally there should be
+    # just one headers suffix for all glibc multilibs, since it isn't
+    # useful to have more than one such suffix, given headers that
+    # properly support all ABIs.)
+    headers_trees = collections.defaultdict(lambda: FSTreeEmpty(cfg.context))
+    for multilib in cfg.multilibs.get():
+        if multilib.libc is component:
+            tree = cfg.install_tree_fstree(multilib.build_cfg, 'glibc')
+            tree = FSTreeExtract(tree, ['usr/include'])
+            headers_suffix = multilib.headers_suffix
+            headers_trees[multilib.headers_suffix] = FSTreeUnion(
+                headers_trees[multilib.headers_suffix], tree, True)
+    for headers_suffix, tree in sorted(headers_trees.items()):
+        this_sysroot_rel = os.path.normpath(os.path.join(sysroot_rel,
+                                                         headers_suffix))
+        tree = FSTreeMove(tree, this_sysroot_rel)
+        if is_build:
+            host_group.contribute_implicit_install(host_b,
+                                                   'toolchain-2-before', tree)
+            host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+        host_group.contribute_package(host, tree)
 
 
 class Component(sourcery.component.Component):
@@ -87,19 +122,25 @@ class Component(sourcery.component.Component):
 
     @staticmethod
     def add_build_tasks_for_first_host(cfg, host, component, host_group):
+        _contribute_headers_tree(cfg, host, component, host_group, True)
+
+    @staticmethod
+    def add_build_tasks_for_other_hosts(cfg, host, component, host_group):
+        _contribute_headers_tree(cfg, host, component, host_group, False)
+
+    @staticmethod
+    def add_build_tasks_for_first_host_multilib(cfg, host, component,
+                                                host_group, multilib):
+        if multilib.libc is not component:
+            return
         host_b = host.build_cfg
-        target = cfg.target.get()
         inst_1 = cfg.install_tree_path(host_b, 'toolchain-1')
         bindir_1 = os.path.join(inst_1, cfg.bindir_rel.get())
-        # This should actually run in a loop over multilibs, with
-        # appropriate handling for files appearing for more than
-        # multilib sharing the same sysroot and for headers shared by
-        # all multilibs.
-        target_build = BuildCfg(cfg.context, target)
+        target_build = multilib.build_cfg
         srcdir = component.vars.srcdir.get()
         objdir = cfg.objdir_path(target_build, 'glibc')
         instdir = cfg.install_tree_path(target_build, 'glibc')
-        group = BuildTask(cfg, host_group, 'glibc')
+        group = BuildTask(cfg, host_group, 'glibc-%s' % target_build.name)
         group.depend_install(host_b, 'toolchain-1')
         group.env_prepend('PATH', bindir_1)
         group.provide_install(target_build, 'glibc')
@@ -121,8 +162,11 @@ class Component(sourcery.component.Component):
         install_task = BuildTask(cfg, group, 'install')
         install_task.add_make(['-j1', 'install', 'install_root=%s' % instdir],
                               objdir)
-        _contribute_sysroot_tree(cfg, host, host_group, True)
+        _contribute_sysroot_tree(cfg, host, host_group, True, multilib)
 
     @staticmethod
-    def add_build_tasks_for_other_hosts(cfg, host, component, host_group):
-        _contribute_sysroot_tree(cfg, host, host_group, False)
+    def add_build_tasks_for_other_hosts_multilib(cfg, host, component,
+                                                 host_group, multilib):
+        if multilib.libc is not component:
+            return
+        _contribute_sysroot_tree(cfg, host, host_group, False, multilib)

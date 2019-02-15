@@ -28,7 +28,7 @@ import unittest
 from sourcery.context import ScriptError, ScriptContext
 from sourcery.fstree import MapFSTreeCopy, MapFSTreeMap, MapFSTreeSymlink, \
     FSTreeCopy, FSTreeEmpty, FSTreeSymlink, FSTreeMove, FSTreeRemove, \
-    FSTreeExtract, FSTreeUnion
+    FSTreeExtract, FSTreeExtractOne, FSTreeUnion
 from sourcery.selftests.support import create_files, read_files
 
 __all__ = ['MapFSTreeTestCase', 'FSTreeTestCase']
@@ -871,6 +871,47 @@ class FSTreeTestCase(unittest.TestCase):
         self.assertRaisesRegex(ScriptError,
                                'invalid path to extract: ',
                                FSTreeExtract, ctree, [''])
+
+    def test_extract_one(self):
+        """Test FSTreeExtractOne."""
+        ctree = FSTreeCopy(self.context, self.indir, {'foo/bar'})
+        tree = FSTreeExtractOne(ctree, 'd/e/f')
+        self.assertEqual(tree.install_trees, {'foo/bar'})
+        create_files(self.indir, ['d', 'd/e', 'd/e/f'],
+                     {'d/e/f/g': 'file d/e/f/g'},
+                     {'dead-symlink': 'bad'})
+        tree.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         (set(),
+                          {'g': 'file d/e/f/g'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        tree = FSTreeExtractOne(ctree, 'dead-symlink')
+        self.assertEqual(tree.install_trees, {'foo/bar'})
+        tree.export(self.outdir)
+        self.assertEqual(os.readlink(self.outdir), 'bad')
+
+    def test_extract_one_errors(self):
+        """Test errors from FSTreeExtractOne."""
+        ctree = FSTreeCopy(self.context, self.indir, {'foo/bar'})
+        self.assertRaisesRegex(ScriptError,
+                               r'invalid path to extract: \.',
+                               FSTreeExtractOne, ctree, '.')
+        self.assertRaisesRegex(ScriptError,
+                               r'invalid path to extract: \.\.',
+                               FSTreeExtractOne, ctree, '..')
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: foo//bar',
+                               FSTreeExtractOne, ctree, 'foo//bar')
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: /foo',
+                               FSTreeExtractOne, ctree, '/foo')
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: bar/',
+                               FSTreeExtractOne, ctree, 'bar/')
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: ',
+                               FSTreeExtractOne, ctree, '')
 
     def test_union(self):
         """Test FSTreeUnion."""

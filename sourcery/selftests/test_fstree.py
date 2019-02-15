@@ -579,6 +579,78 @@ class MapFSTreeTestCase(unittest.TestCase):
                                'invalid path to extract: ',
                                tree.extract, [''])
 
+    def test_extract_one(self):
+        """Test extraction of a single path from a MapFSTree object."""
+        create_files(self.indir, ['d', 'd/e', 'd/e/f'],
+                     {'d/e/f/g': 'file d/e/f/g'},
+                     {'dead-symlink': 'bad'})
+        tree = MapFSTreeCopy(self.context, self.indir)
+        tree_ex = tree.extract_one('d')
+        tree_ex.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'e', 'e/f'},
+                          {'e/f/g': 'file d/e/f/g'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        tree_ex = tree.extract_one('d/e/f')
+        tree_ex.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         (set(),
+                          {'g': 'file d/e/f/g'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        tree_ex = tree.extract_one('d/e/f/g')
+        tree_ex.export(self.outdir)
+        with open(self.outdir, 'r', encoding='utf-8') as file:
+            self.assertEqual(file.read(), 'file d/e/f/g')
+        os.remove(self.outdir)
+        tree_ex = tree.extract_one('dead-symlink')
+        tree_ex.export(self.outdir)
+        self.assertEqual(os.readlink(self.outdir), 'bad')
+        os.remove(self.outdir)
+        tree.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'d', 'd/e', 'd/e/f'},
+                          {'d/e/f/g': 'file d/e/f/g'},
+                          {'dead-symlink': 'bad'}))
+
+    def test_extract_one_errors(self):
+        """Test errors extracting a single paths from a MapFSTree object."""
+        create_files(self.indir,
+                     [],
+                     {'f': 'file f'},
+                     {'link': 'target'})
+        tree_f = MapFSTreeCopy(self.context, os.path.join(self.indir, 'f'))
+        self.assertRaisesRegex(ScriptError,
+                               r'extracting a path from a non-directory',
+                               tree_f.extract_one, 'test')
+        tree_link = MapFSTreeCopy(self.context,
+                                  os.path.join(self.indir, 'link'))
+        self.assertRaisesRegex(ScriptError,
+                               r'extracting a path from a non-directory',
+                               tree_link.extract_one, 'test')
+        tree = MapFSTreeMap(self.context, {})
+        self.assertRaisesRegex(ScriptError,
+                               r'invalid path to extract: \.',
+                               tree.extract_one, '.')
+        self.assertRaisesRegex(ScriptError,
+                               r'invalid path to extract: \.\.',
+                               tree.extract_one, '..')
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: foo//bar',
+                               tree.extract_one, 'foo//bar')
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: /foo',
+                               tree.extract_one, '/foo')
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: bar/',
+                               tree.extract_one, 'bar/')
+        self.assertRaisesRegex(ScriptError,
+                               'invalid path to extract: ',
+                               tree.extract_one, '')
+        self.assertRaises(KeyError, tree.extract_one, 'test')
+        self.assertRaises(KeyError, tree.extract_one, 'test1/test2')
+
 
 class FSTreeTestCase(unittest.TestCase):
 

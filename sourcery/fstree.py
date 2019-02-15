@@ -239,6 +239,28 @@ class MapFSTree:
             del ret.name_map[subdir]
         return ret
 
+    def extract_one(self, path):
+        """Return a MapFSTree for the given path within this one.
+
+        The path must exist (as a file, directory or symlink).  The
+        difference from the extract method with a single path passed
+        is that the new MapFSTree refers directly to the given object,
+        rather than to a tree with the same top-level directory where
+        that object exists at the same path as in the MapFSTree
+        passed.
+
+        """
+        if not self.is_dir:
+            self.context.error('extracting a path from a non-directory')
+        if _invalid_path(path):
+            self.context.error('invalid path to extract: %s' % path)
+        expanded = self._expand(False)
+        if '/' in path:
+            p_dir, p_rest = path.split('/', maxsplit=1)
+            return expanded.name_map[p_dir].extract_one(p_rest)
+        else:
+            return expanded.name_map[path]
+
 
 class MapFSTreeCopy(MapFSTree):
     """A MapFSTreeCopy constructs a filesystem object from a path."""

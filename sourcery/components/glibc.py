@@ -37,9 +37,7 @@ def _contribute_sysroot_tree(cfg, host, host_group, is_build, multilib):
     # Headers must be unified for each sysroot headers suffix, so are
     # handled separately.
     tree = FSTreeRemove(tree, ['usr/include'])
-    sysroot_rel = cfg.sysroot_rel.get()
-    sysroot_rel = os.path.normpath(os.path.join(sysroot_rel,
-                                                multilib.sysroot_suffix))
+    sysroot_rel = multilib.sysroot_rel
     tree = FSTreeMove(tree, sysroot_rel)
     # Ensure lib directories exist so that GCC's use of paths such
     # as lib/../lib64 works.
@@ -59,7 +57,6 @@ def _contribute_sysroot_tree(cfg, host, host_group, is_build, multilib):
 def _contribute_headers_tree(cfg, host, component, host_group, is_build):
     """Contribute the glibc headers to all required install trees."""
     host_b = host.build_cfg
-    sysroot_rel = cfg.sysroot_rel.get()
     # Most glibc headers should be the same between multilibs, but
     # some headers (gnu/stubs.h, gnu/lib-names.h) are set up to have
     # per-ABI conditionals and include per-ABI header variants that
@@ -74,13 +71,10 @@ def _contribute_headers_tree(cfg, host, component, host_group, is_build):
         if multilib.libc is component:
             tree = cfg.install_tree_fstree(multilib.build_cfg, 'glibc')
             tree = FSTreeExtract(tree, ['usr/include'])
-            headers_suffix = multilib.headers_suffix
-            headers_trees[multilib.headers_suffix] = FSTreeUnion(
-                headers_trees[multilib.headers_suffix], tree, True)
-    for headers_suffix, tree in sorted(headers_trees.items()):
-        this_sysroot_rel = os.path.normpath(os.path.join(sysroot_rel,
-                                                         headers_suffix))
-        tree = FSTreeMove(tree, this_sysroot_rel)
+            headers_trees[multilib.headers_rel] = FSTreeUnion(
+                headers_trees[multilib.headers_rel], tree, True)
+    for headers_rel, tree in sorted(headers_trees.items()):
+        tree = FSTreeMove(tree, headers_rel)
         if is_build:
             host_group.contribute_implicit_install(host_b,
                                                    'toolchain-2-before', tree)

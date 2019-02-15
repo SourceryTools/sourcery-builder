@@ -54,6 +54,8 @@ class MultilibTestCase(unittest.TestCase):
         self.assertIsNone(multilib.sysroot_suffix)
         self.assertIsNone(multilib.headers_suffix)
         self.assertIsNone(multilib.sysroot_osdir)
+        self.assertIsNone(multilib.sysroot_rel)
+        self.assertIsNone(multilib.headers_rel)
         self.assertIsNone(multilib.osdir)
         self.assertIsNone(multilib.target)
         self.assertIsNone(multilib.build_cfg)
@@ -267,6 +269,10 @@ class MultilibTestCase(unittest.TestCase):
         self.assertEqual(multilib.sysroot_suffix, 'foo')
         self.assertEqual(multilib.headers_suffix, 'foo2')
         self.assertEqual(multilib.sysroot_osdir, 'os')
+        self.assertEqual(multilib.sysroot_rel,
+                         'opt/toolchain/aarch64-linux-gnu/libc/foo')
+        self.assertEqual(multilib.headers_rel,
+                         'opt/toolchain/aarch64-linux-gnu/libc/foo2')
         self.assertEqual(multilib.osdir, 'os2')
         self.assertEqual(multilib.target, 'other')
         self.assertIsInstance(multilib.build_cfg, BuildCfg)
@@ -281,6 +287,10 @@ class MultilibTestCase(unittest.TestCase):
         self.assertEqual(multilib.sysroot_suffix, '.')
         self.assertEqual(multilib.headers_suffix, '.')
         self.assertEqual(multilib.sysroot_osdir, '.')
+        self.assertEqual(multilib.sysroot_rel,
+                         'opt/toolchain/aarch64-linux-gnu/libc')
+        self.assertEqual(multilib.headers_rel,
+                         'opt/toolchain/aarch64-linux-gnu/libc')
         self.assertEqual(multilib.osdir, '.')
         self.assertEqual(multilib.target, 'aarch64-linux-gnu')
         self.assertIsInstance(multilib.build_cfg, BuildCfg)
@@ -295,6 +305,8 @@ class MultilibTestCase(unittest.TestCase):
         self.assertIsNone(multilib.sysroot_suffix)
         self.assertIsNone(multilib.headers_suffix)
         self.assertIsNone(multilib.sysroot_osdir)
+        self.assertIsNone(multilib.sysroot_rel)
+        self.assertIsNone(multilib.headers_rel)
         self.assertEqual(multilib.osdir, 'os2')
         self.assertEqual(multilib.target, 'other')
         self.assertIsInstance(multilib.build_cfg, BuildCfg)
@@ -309,6 +321,8 @@ class MultilibTestCase(unittest.TestCase):
         self.assertIsNone(multilib.sysroot_suffix)
         self.assertIsNone(multilib.headers_suffix)
         self.assertIsNone(multilib.sysroot_osdir)
+        self.assertIsNone(multilib.sysroot_rel)
+        self.assertIsNone(multilib.headers_rel)
         self.assertEqual(multilib.osdir, '.')
         self.assertEqual(multilib.target, 'aarch64-linux-gnu')
         self.assertIsInstance(multilib.build_cfg, BuildCfg)
@@ -325,6 +339,10 @@ class MultilibTestCase(unittest.TestCase):
         self.assertEqual(multilib.sysroot_suffix, 'foo')
         self.assertEqual(multilib.headers_suffix, 'foo2')
         self.assertEqual(multilib.sysroot_osdir, 'os')
+        self.assertEqual(multilib.sysroot_rel,
+                         'opt/toolchain/aarch64-linux-gnu/libc/foo')
+        self.assertEqual(multilib.headers_rel,
+                         'opt/toolchain/aarch64-linux-gnu/libc/foo2')
         self.assertEqual(multilib.osdir, 'os2')
         self.assertEqual(multilib.target, 'other')
         self.assertIsInstance(multilib.build_cfg, BuildCfg)
@@ -340,6 +358,10 @@ class MultilibTestCase(unittest.TestCase):
         self.assertEqual(multilib.sysroot_suffix, '.')
         self.assertEqual(multilib.headers_suffix, '.')
         self.assertEqual(multilib.sysroot_osdir, '.')
+        self.assertEqual(multilib.sysroot_rel,
+                         'opt/toolchain/aarch64-linux-gnu/libc')
+        self.assertEqual(multilib.headers_rel,
+                         'opt/toolchain/aarch64-linux-gnu/libc')
         self.assertEqual(multilib.osdir, '.')
         self.assertEqual(multilib.target, 'aarch64-linux-gnu')
         self.assertIsInstance(multilib.build_cfg, BuildCfg)
@@ -354,6 +376,8 @@ class MultilibTestCase(unittest.TestCase):
         self.assertIsNone(multilib.sysroot_suffix)
         self.assertIsNone(multilib.headers_suffix)
         self.assertIsNone(multilib.sysroot_osdir)
+        self.assertIsNone(multilib.sysroot_rel)
+        self.assertIsNone(multilib.headers_rel)
         self.assertEqual(multilib.osdir, 'os2')
         self.assertEqual(multilib.target, 'other')
         self.assertIsInstance(multilib.build_cfg, BuildCfg)
@@ -368,6 +392,8 @@ class MultilibTestCase(unittest.TestCase):
         self.assertIsNone(multilib.sysroot_suffix)
         self.assertIsNone(multilib.headers_suffix)
         self.assertIsNone(multilib.sysroot_osdir)
+        self.assertIsNone(multilib.sysroot_rel)
+        self.assertIsNone(multilib.headers_rel)
         self.assertEqual(multilib.osdir, '.')
         self.assertEqual(multilib.target, 'aarch64-linux-gnu')
         self.assertIsInstance(multilib.build_cfg, BuildCfg)

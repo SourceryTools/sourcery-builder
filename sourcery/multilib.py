@@ -101,6 +101,8 @@ class Multilib:
         # components.
         self.sysroot_suffix = None
         self.headers_suffix = None
+        self.sysroot_rel = None
+        self.headers_rel = None
         self.sysroot_osdir = None
         self.osdir = None
         self.target = None
@@ -163,6 +165,10 @@ class Multilib:
             self.sysroot_osdir = ('.'
                                   if self._save_sysroot_osdir is None
                                   else self._save_sysroot_osdir)
+            self.sysroot_rel = os.path.normpath(os.path.join(
+                relcfg.sysroot_rel.get(), self.sysroot_suffix))
+            self.headers_rel = os.path.normpath(os.path.join(
+                relcfg.sysroot_rel.get(), self.headers_suffix))
         else:
             if self._save_sysroot_suffix is not None:
                 self.context.error('sysroot suffix for non-sysrooted libc')
@@ -173,6 +179,8 @@ class Multilib:
             if self._save_sysroot_osdir is not None:
                 self.context.error('sysroot osdir for non-sysrooted libc')
             self.sysroot_osdir = None
+            self.sysroot_rel = None
+            self.headers_rel = None
         if self._save_osdir is not None:
             self.osdir = self._save_osdir
         else:

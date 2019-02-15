@@ -18,8 +18,6 @@
 
 """sourcery-builder linux component."""
 
-import os.path
-
 from sourcery.buildtask import BuildTask
 import sourcery.component
 from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeRemove, FSTreeUnion
@@ -77,12 +75,10 @@ def _contribute_headers_tree(cfg, host, host_group, is_build):
     # headers suffix for which a sysroot is shipped with the
     # toolchain.
     ctree = FSTreeEmpty(cfg.context)
-    suffixes = sorted({m.headers_suffix for m in cfg.multilibs.get()
-                       if m.libc is not None and m.headers_suffix is not None})
-    for suffix in suffixes:
-        suffix_usr = os.path.normpath(os.path.join(suffix, 'usr'))
-        moved_tree = FSTreeMove(tree,
-                                '%s/%s' % (cfg.sysroot_rel.get(), suffix_usr))
+    dirs = sorted({m.headers_rel for m in cfg.multilibs.get()
+                   if m.libc is not None and m.headers_rel is not None})
+    for headers_dir in dirs:
+        moved_tree = FSTreeMove(tree, '%s/usr' % headers_dir)
         ctree = FSTreeUnion(ctree, moved_tree)
     if is_build:
         host_group.contribute_implicit_install(host_b, 'toolchain-1-before',

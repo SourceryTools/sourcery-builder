@@ -21,6 +21,8 @@
 import os.path
 
 from sourcery.buildcfg import BuildCfg
+from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeRemove, \
+    FSTreeExtractOne, FSTreeUnion
 
 __all__ = ['Multilib']
 
@@ -191,3 +193,47 @@ class Multilib:
         tool_prefix = '%s-' % relcfg.target.get()
         self.build_cfg = BuildCfg(self.context, self.target,
                                   tool_prefix=tool_prefix, ccopts=self.ccopts)
+
+    def move_sysroot_executables(self, tree, dirs):
+        """Move executables to a per-multilib directory such as usr/lib/bin.
+
+        This is for the case where a sysroot is shared between
+        multilibs, and so different multilibs have different library
+        directories such as usr/lib and usr/lib64, but executables go
+        in the same directory such as usr/bin for all multilibs.  To
+        avoid conflicts between files for different multilibs, those
+        executables are moved to per-multilib directories such as
+        usr/lib/bin (this is an arrangement for packaging, with users
+        of the sysroot expected to copy the preferred version of a
+        binary back into directories such as usr/bin).  For user
+        convenience, copies of the files are left in their original
+        directories if there is only one multilib in the sysroot.
+
+        dirs is a list of directories in the sysroot from which files
+        are to be moved or copied.  tree is an FSTree for the sysroot;
+        dir_src must exist therein.  An FSTree is returned; the
+        directories in dirs still exist there, but may be empty.
+
+        """
+        if self.sysroot_suffix is None:
+            self.context.error('move_sysroot_executables called for '
+                               'non-sysroot multilib')
+        if isinstance(dirs, str):
+            self.context.error('dirs must be a list of strings, not a single '
+                               'string')
+        dir_dst = os.path.normpath(os.path.join('usr/lib', self.sysroot_osdir,
+                                                'bin'))
+        num_multilibs = len([m for m in self._relcfg.multilibs.get()
+                             if m.sysroot_suffix == self.sysroot_suffix])
+        for dir_src in dirs:
+            tree_src = FSTreeExtractOne(tree, dir_src)
+            tree_moved = FSTreeMove(tree_src, dir_dst)
+            if num_multilibs > 1:
+                tree = FSTreeRemove(tree, [dir_src])
+            tree = FSTreeUnion(tree, tree_moved)
+            if num_multilibs > 1:
+                # Keep the original binary directory present in the
+                # packages, although empty (again for user convenience).
+                empty = FSTreeMove(FSTreeEmpty(self.context), dir_src)
+                tree = FSTreeUnion(tree, empty)
+        return tree

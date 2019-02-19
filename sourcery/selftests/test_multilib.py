@@ -20,12 +20,16 @@
 
 import argparse
 import os
+import shutil
+import tempfile
 import unittest
 
 from sourcery.buildcfg import BuildCfg
 from sourcery.context import add_common_options, ScriptError, ScriptContext
+from sourcery.fstree import FSTreeCopy, FSTreeEmpty
 from sourcery.multilib import Multilib
 from sourcery.relcfg import ReleaseConfig, ReleaseConfigTextLoader
+from sourcery.selftests.support import create_files, read_files
 
 __all__ = ['MultilibTestCase']
 
@@ -40,6 +44,10 @@ class MultilibTestCase(unittest.TestCase):
         parser = argparse.ArgumentParser()
         add_common_options(parser, os.getcwd())
         self.args = parser.parse_args([])
+        self.tempdir_td = tempfile.TemporaryDirectory()
+        self.tempdir = self.tempdir_td.name
+        self.indir = os.path.join(self.tempdir, 'in')
+        self.outdir = os.path.join(self.tempdir, 'out')
 
     def test_init(self):
         """Test __init__."""
@@ -463,3 +471,94 @@ class MultilibTestCase(unittest.TestCase):
         self.assertRaisesRegex(ScriptError,
                                'sysroot osdir for non-sysrooted libc',
                                multilib.finalize, relcfg)
+
+    def test_move_sysroot_executables(self):
+        """Test move_sysroot_executables."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.add_component("sysrooted_libc")\n'
+                       'cfg.sysrooted_libc.vc.set(GitVC("dummy"))\n'
+                       'cfg.sysrooted_libc.version.set("1.23")\n'
+                       'cfg.multilibs.set((Multilib("generic", '
+                       '"sysrooted_libc", ()), Multilib("generic", '
+                       '"sysrooted_libc", ("-m64",), '
+                       'sysroot_osdir="../lib64"), Multilib("generic", '
+                       '"sysrooted_libc", ("-mfoo",), '
+                       'sysroot_suffix="foo")))\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        multilibs = relcfg.multilibs.get()
+        create_files(self.indir, ['bin1', 'bin2'],
+                     {'bin1/a': 'file bin1/a', 'bin2/b': 'file bin2/b'},
+                     {})
+        tree = FSTreeCopy(self.context, self.indir, {'name'})
+        tree_moved = multilibs[0].move_sysroot_executables(tree,
+                                                           ('bin1', 'bin2'))
+        tree_moved.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'bin1', 'bin2', 'usr', 'usr/lib', 'usr/lib/bin'},
+                          {'usr/lib/bin/a': 'file bin1/a',
+                           'usr/lib/bin/b': 'file bin2/b'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        tree_moved = multilibs[1].move_sysroot_executables(tree,
+                                                           ['bin1', 'bin2'])
+        tree_moved.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'bin1', 'bin2', 'usr', 'usr/lib64',
+                           'usr/lib64/bin'},
+                          {'usr/lib64/bin/a': 'file bin1/a',
+                           'usr/lib64/bin/b': 'file bin2/b'},
+                          {}))
+        shutil.rmtree(self.outdir)
+        # When only one multilib uses the sysroot, the files are kept
+        # in their original locations as well as being copied.
+        tree_moved = multilibs[2].move_sysroot_executables(tree,
+                                                           ('bin1', 'bin2'))
+        tree_moved.export(self.outdir)
+        self.assertEqual(read_files(self.outdir),
+                         ({'bin1', 'bin2', 'usr', 'usr/lib', 'usr/lib/bin'},
+                          {'bin1/a': 'file bin1/a', 'bin2/b': 'file bin2/b',
+                           'usr/lib/bin/a': 'file bin1/a',
+                           'usr/lib/bin/b': 'file bin2/b'},
+                          {}))
+
+    def test_move_sysroot_executables_errors(self):
+        """Test errors from move_sysroot_executables."""
+        loader = ReleaseConfigTextLoader()
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.multilibs.set((Multilib("generic", '
+                       '"generic", ()),))\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        multilib = relcfg.multilibs.get()[0]
+        tree = FSTreeEmpty(self.context)
+        self.assertRaisesRegex(ScriptError,
+                               'move_sysroot_executables called for '
+                               'non-sysroot multilib',
+                               multilib.move_sysroot_executables,
+                               tree, ('bin',))
+        relcfg_text = ('cfg.build.set("x86_64-linux-gnu")\n'
+                       'cfg.target.set("aarch64-linux-gnu")\n'
+                       'cfg.add_component("generic")\n'
+                       'cfg.generic.vc.set(GitVC("dummy"))\n'
+                       'cfg.generic.version.set("1.23")\n'
+                       'cfg.add_component("sysrooted_libc")\n'
+                       'cfg.sysrooted_libc.vc.set(GitVC("dummy"))\n'
+                       'cfg.sysrooted_libc.version.set("1.23")\n'
+                       'cfg.multilibs.set((Multilib("generic", '
+                       '"sysrooted_libc", ()),))\n')
+        relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
+        multilib = relcfg.multilibs.get()[0]
+        tree = FSTreeEmpty(self.context)
+        self.assertRaisesRegex(ScriptError,
+                               'dirs must be a list of strings, not a single '
+                               'string',
+                               multilib.move_sysroot_executables,
+                               tree, 'bin')

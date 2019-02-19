@@ -29,24 +29,56 @@ from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeRemove, \
 __all__ = ['Component']
 
 
+_SYSROOT_SHARED_PATHS = ('etc', 'usr/share', 'var')
+
+
 def _contribute_sysroot_tree(cfg, host, host_group, is_build, multilib):
     """Contribute the glibc installation to all required install trees."""
     host_b = host.build_cfg
     target_build = multilib.build_cfg
     tree = cfg.install_tree_fstree(target_build, 'glibc')
+    # Copy or move executables to locations that do not conflict
+    # between sysroots.
+    tree = multilib.move_sysroot_executables(tree, ('sbin', 'usr/bin',
+                                                    'usr/sbin',
+                                                    'usr/libexec/getconf'))
+    # Ensure lib directories exist so that GCC's use of paths such
+    # as lib/../lib64 works.
+    tree_lib = FSTreeMove(FSTreeEmpty(cfg.context), 'lib')
+    tree_usr_lib = FSTreeMove(FSTreeEmpty(cfg.context), 'usr/lib')
+    tree = FSTreeUnion(tree, tree_lib)
+    tree = FSTreeUnion(tree, tree_usr_lib)
+    # Some files are shared between multilibs sharing a sysroot, so
+    # are handled separately.
+    tree = FSTreeRemove(tree, _SYSROOT_SHARED_PATHS)
     # Headers must be unified for each sysroot headers suffix, so are
     # handled separately.
     tree = FSTreeRemove(tree, ['usr/include'])
-    sysroot_rel = multilib.sysroot_rel
-    tree = FSTreeMove(tree, sysroot_rel)
-    # Ensure lib directories exist so that GCC's use of paths such
-    # as lib/../lib64 works.
-    tree_lib = FSTreeMove(FSTreeEmpty(cfg.context),
-                          os.path.join(sysroot_rel, 'lib'))
-    tree_usr_lib = FSTreeMove(FSTreeEmpty(cfg.context),
-                              os.path.join(sysroot_rel, 'usr', 'lib'))
-    tree = FSTreeUnion(tree, tree_lib)
-    tree = FSTreeUnion(tree, tree_usr_lib)
+    # Move the tree to its final location.
+    tree = FSTreeMove(tree, multilib.sysroot_rel)
+    if is_build:
+        host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
+                                               tree)
+        host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+    host_group.contribute_package(host, tree)
+
+
+def _contribute_shared_tree(cfg, host, component, host_group, is_build):
+    """Contribute sysroot-shared files to all required install trees.
+
+    This is for files that are identical between multilibs sharing a
+    sysroot, so should be unified between such multilibs (duplicates
+    allowed).
+
+    """
+    host_b = host.build_cfg
+    tree = FSTreeEmpty(cfg.context)
+    for multilib in cfg.multilibs.get():
+        if multilib.libc is component:
+            this_tree = cfg.install_tree_fstree(multilib.build_cfg, 'glibc')
+            this_tree = FSTreeExtract(this_tree, _SYSROOT_SHARED_PATHS)
+            this_tree = FSTreeMove(this_tree, multilib.sysroot_rel)
+            tree = FSTreeUnion(tree, this_tree, True)
     if is_build:
         host_group.contribute_implicit_install(host_b, 'toolchain-2-before',
                                                tree)
@@ -117,10 +149,12 @@ class Component(sourcery.component.Component):
     @staticmethod
     def add_build_tasks_for_first_host(cfg, host, component, host_group):
         _contribute_headers_tree(cfg, host, component, host_group, True)
+        _contribute_shared_tree(cfg, host, component, host_group, True)
 
     @staticmethod
     def add_build_tasks_for_other_hosts(cfg, host, component, host_group):
         _contribute_headers_tree(cfg, host, component, host_group, False)
+        _contribute_shared_tree(cfg, host, component, host_group, False)
 
     @staticmethod
     def add_build_tasks_for_first_host_multilib(cfg, host, component,

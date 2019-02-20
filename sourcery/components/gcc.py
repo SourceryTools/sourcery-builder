@@ -22,7 +22,8 @@ import os.path
 
 from sourcery.autoconf import add_host_tool_cfg_build_tasks
 import sourcery.component
-from sourcery.fstree import FSTreeRemove, FSTreeExtract, FSTreeUnion
+from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeRemove, \
+    FSTreeExtract, FSTreeExtractOne, FSTreeUnion
 from sourcery.relcfg import ConfigVarTypeList, ConfigVarTypeStrEnum
 
 __all__ = ['Component']
@@ -165,8 +166,74 @@ class Component(sourcery.component.Component):
         group.env_prepend('PATH', bindir_2)
         tree = cfg.install_tree_fstree(host_b, 'gcc')
         tree = FSTreeRemove(tree, [cfg.info_dir_rel.get()])
+        installdir_rel = cfg.installdir_rel.get()
+        tree_build = cfg.install_tree_fstree(build_b, 'gcc')
+        # Packaged sysroots are most convenient for users if they
+        # contain all shared libraries that may be implicitly used by
+        # the toolchain; thus, such libraries installed by GCC should
+        # be copied to the sysroots.  For consistency with libraries
+        # built with libc, static libraries and object files are also
+        # copied there, although not strictly required.  In most
+        # cases, it is sufficient to move the files there without
+        # keeping copies in the original location.  However, GCC
+        # searches both multilib and non-multilib paths for libraries,
+        # with the search of non-multilib paths being required in some
+        # cases as explained in
+        # <https://gcc.gnu.org/ml/gcc/2016-12/msg00013.html>.
+        # Furthermore, the search of non-multilib non-sysroot paths
+        # may come before sysroot paths.  In that case, if the default
+        # GCC multilib does not have a sysroot into which libraries
+        # can be moved, libraries for that multilib could be found
+        # before libraries for other multilibs that had been moved
+        # into their sysroots.  Thus, in the case where any multilib
+        # does not have a sysroot into which libraries can be moved,
+        # all sysroots have libraries copied there without being
+        # removed from their original locations.  In any case, only
+        # libraries from the <target>/lib or equivalent directory are
+        # copied or moved; libraries from GCC's libsubdir (which are
+        # only static libraries and object files, in the absence of
+        # --enable-version-specific-runtime-libs) are left there.
+        have_non_sysroot_multilib = False
+        for multilib in cfg.multilibs.get():
+            if multilib.sysroot_suffix is None or multilib.libc is None:
+                have_non_sysroot_multilib = True
+                break
+        tree_sysroot_libs = FSTreeEmpty(cfg.context)
+        for multilib in cfg.multilibs.get():
+            if multilib.sysroot_suffix is None or multilib.libc is None:
+                continue
+            libs_dir = os.path.normpath('%s/%s/lib/%s' % (installdir_rel,
+                                                          target,
+                                                          multilib.osdir))
+            libs_tree = FSTreeExtractOne(tree_build, libs_dir)
+            libs_tree = FSTreeExtract(libs_tree, ['*.so*', '*.a', '*.o'])
+            libgcc_tree = FSTreeExtract(libs_tree, ['libgcc*'])
+            libs_tree = FSTreeRemove(libs_tree, ['libgcc*'])
+            dst_lib = os.path.normpath(os.path.join(multilib.sysroot_rel,
+                                                    'lib',
+                                                    multilib.sysroot_osdir))
+            dst_usrlib = os.path.normpath(os.path.join(multilib.sysroot_rel,
+                                                       'usr/lib',
+                                                       multilib.sysroot_osdir))
+            tree_sysroot_libs = FSTreeUnion(tree_sysroot_libs,
+                                            FSTreeMove(libgcc_tree, dst_lib))
+            tree_sysroot_libs = FSTreeUnion(tree_sysroot_libs,
+                                            FSTreeMove(libs_tree, dst_usrlib))
+            if have_non_sysroot_multilib:
+                continue
+            # Remove the libraries from their original locations.
+            if host == build:
+                tree = FSTreeRemove(tree, ['%s/*.so*' % libs_dir,
+                                           '%s/*.a' % libs_dir,
+                                           '%s/*.o' % libs_dir])
+            else:
+                tree_build = FSTreeRemove(tree_build, ['%s/*.so*' % libs_dir,
+                                                       '%s/*.a' % libs_dir,
+                                                       '%s/*.o' % libs_dir])
         if host == build:
             host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
+            host_group.contribute_implicit_install(host_b, 'toolchain-2',
+                                                   tree_sysroot_libs)
         if host != build:
             # Libraries built for the build system, and other files
             # installed with those libraries, are reused for other
@@ -176,8 +243,6 @@ class Component(sourcery.component.Component):
             # directories, so only from the build system.  Thus,
             # extract the two sets of headers and form a union for
             # them allowing duplicates with identical contents.
-            installdir_rel = cfg.installdir_rel.get()
-            tree_build = cfg.install_tree_fstree(build_b, 'gcc')
             # libtool .la files contain paths with the configured
             # prefix hardcoded, so do not work in relocated
             # toolchains.
@@ -214,6 +279,7 @@ class Component(sourcery.component.Component):
         # hardcoded, so do not work in relocated toolchains.
         tree = FSTreeRemove(tree, ['**/*.la'])
         host_group.contribute_package(host, tree)
+        host_group.contribute_package(host, tree_sysroot_libs)
 
     @staticmethod
     def configure_opts(cfg, host):

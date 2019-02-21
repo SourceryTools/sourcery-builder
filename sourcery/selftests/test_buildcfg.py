@@ -343,3 +343,46 @@ class BuildCfgTestCase(unittest.TestCase):
         self.assertEqual(run_ret.returncode, 0)
         self.assertEqual(run_ret.stdout, 'gcc2\n-mtest\nexample\narg\n')
         self.assertEqual(run_ret.stderr, '')
+
+    def test_get_endianness(self):
+        """Test the get_endianness method."""
+        create_files(self.bindir, [],
+                     {'big-gcc':
+                      '#!/bin/sh\n'
+                      'sed -i -e s/__BYTE_ORDER__/4321/ '
+                      '-e s/__ORDER_BIG_ENDIAN__/4321/ '
+                      '-e s/__ORDER_LITTLE_ENDIAN__/1234/ $3\n'
+                      'exec gcc "$@"\n',
+                      'little-gcc':
+                      '#!/bin/sh\n'
+                      'sed -i -e s/__BYTE_ORDER__/1234/ '
+                      '-e s/__ORDER_BIG_ENDIAN__/4321/ '
+                      '-e s/__ORDER_LITTLE_ENDIAN__/1234/ $3\n'
+                      'exec gcc "$@"\n',
+                      'pdp-gcc':
+                      '#!/bin/sh\n'
+                      'sed -i -e s/__BYTE_ORDER__/3412/ '
+                      '-e s/__ORDER_BIG_ENDIAN__/4321/ '
+                      '-e s/__ORDER_LITTLE_ENDIAN__/1234/ $3\n'
+                      'exec gcc "$@"\n',
+                      'other-gcc':
+                      '#!/bin/sh\n'
+                      'echo other\n'},
+                     {})
+        os.chmod(os.path.join(self.bindir, 'big-gcc'), stat.S_IRWXU)
+        os.chmod(os.path.join(self.bindir, 'little-gcc'), stat.S_IRWXU)
+        os.chmod(os.path.join(self.bindir, 'pdp-gcc'), stat.S_IRWXU)
+        os.chmod(os.path.join(self.bindir, 'other-gcc'), stat.S_IRWXU)
+        cfg = BuildCfg(self.context, 'aarch64-linux-gnu', tool_prefix='big-')
+        self.assertEqual(cfg.get_endianness(path_prepend=self.bindir), 'big')
+        cfg = BuildCfg(self.context, 'aarch64-linux-gnu',
+                       tool_prefix='little-')
+        self.assertEqual(cfg.get_endianness(path_prepend=self.bindir),
+                         'little')
+        cfg = BuildCfg(self.context, 'aarch64-linux-gnu', tool_prefix='pdp-')
+        self.assertRaises(subprocess.CalledProcessError,
+                          cfg.get_endianness, path_prepend=self.bindir)
+        cfg = BuildCfg(self.context, 'aarch64-linux-gnu', tool_prefix='other-')
+        self.assertRaisesRegex(ScriptError,
+                               'could not determine endianness: got other',
+                               cfg.get_endianness, path_prepend=self.bindir)

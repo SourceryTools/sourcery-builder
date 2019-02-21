@@ -18,9 +18,11 @@
 
 """Support build configurations."""
 
+import os.path
 import re
 import shlex
 import subprocess
+import tempfile
 
 __all__ = ['BuildCfg']
 
@@ -224,3 +226,29 @@ class BuildCfg:
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               universal_newlines=True, env=new_env,
                               check=check)
+
+    def get_endianness(self, path_prepend=None):
+        """Determine the endianness of this BuildCfg ('big' or 'little').
+
+        This depends on running a C compiler, which must support the
+        __BYTE_ORDER__, __ORDER_BIG_ENDIAN__ and
+        __ORDER_LITTLE_ENDIAN__ built-in macros.
+
+        """
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_name = os.path.join(tempdir, 'endian.c')
+            with open(file_name, 'w', encoding='utf-8') as file:
+                file.write('#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__\n'
+                           'big\n'
+                           '#elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__\n'
+                           'little\n'
+                           '#else\n'
+                           '# error unknown endianness\n'
+                           '#endif\n')
+            tool_out = self.run_tool('c-compiler', ['-E', '-P', file_name],
+                                     path_prepend=path_prepend, check=True)
+        endian = tool_out.stdout.strip()
+        if endian not in ('big', 'little'):
+            self.context.error('could not determine endianness: got %s'
+                               % endian)
+        return endian

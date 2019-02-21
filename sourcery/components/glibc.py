@@ -20,16 +20,39 @@
 
 import collections
 import os.path
+import shlex
 
 from sourcery.buildtask import BuildTask
 import sourcery.component
-from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeRemove, \
+from sourcery.fstree import FSTree, FSTreeEmpty, FSTreeMove, FSTreeRemove, \
     FSTreeExtract, FSTreeUnion
+from sourcery.makefile import Makefile
 
 __all__ = ['Component']
 
 
 _SYSROOT_SHARED_PATHS = ('etc', 'usr/share', 'var')
+
+
+class _FSTreeLocale(FSTree):
+    """An _FSTreeLocale is like an FSTreeExtractOne, but the path
+    extracted depends on the endianness of a multilib so cannot be
+    determined at the time the _FSTreeLocale is created.
+
+    """
+
+    def __init__(self, other, multilib, bindir):
+        """Initialize an _FSTreeLocale object."""
+        self.context = other.context
+        self.other = other
+        self.install_trees = other.install_trees
+        self.multilib = multilib
+        self.bindir = bindir
+
+    def export_map(self):
+        endian = self.multilib.build_cfg.get_endianness(
+            path_prepend=self.bindir)
+        return self.other.export_map().extract_one(endian)
 
 
 def _contribute_sysroot_tree(cfg, host, host_group, is_build, multilib):
@@ -71,12 +94,18 @@ def _contribute_shared_tree(cfg, host, component, host_group, is_build):
     allowed).
 
     """
+    build_b = cfg.build.get().build_cfg
     host_b = host.build_cfg
+    inst_1 = cfg.install_tree_path(build_b, 'toolchain-1')
+    bindir_1 = os.path.join(inst_1, cfg.bindir_rel.get())
     tree = FSTreeEmpty(cfg.context)
     for multilib in cfg.multilibs.get():
         if multilib.libc is component:
             this_tree = cfg.install_tree_fstree(multilib.build_cfg, 'glibc')
             this_tree = FSTreeExtract(this_tree, _SYSROOT_SHARED_PATHS)
+            locales_tree = cfg.install_tree_fstree(build_b, 'glibc-locales')
+            locale_tree = _FSTreeLocale(locales_tree, multilib, bindir_1)
+            this_tree = FSTreeUnion(this_tree, locale_tree)
             this_tree = FSTreeMove(this_tree, multilib.sysroot_rel)
             tree = FSTreeUnion(tree, this_tree, True)
     if is_build:
@@ -112,6 +141,41 @@ def _contribute_headers_tree(cfg, host, component, host_group, is_build):
                                                    'toolchain-2-before', tree)
             host_group.contribute_implicit_install(host_b, 'toolchain-2', tree)
         host_group.contribute_package(host, tree)
+
+
+def _generate_locales_makefile(cfg, component, srcdir, objdir, objdir2,
+                               instdir):
+    """Generate a makefile to use to generate locales."""
+    # Generating locales requires knowing the endiannesses used by
+    # locales, so we generate a makefile after the first compiler and
+    # glibc have been built, and use that makefile to build locales
+    # for the required endiannesses.
+    build_b = cfg.build.get().build_cfg
+    inst_1 = cfg.install_tree_path(build_b, 'toolchain-1')
+    bindir_1 = os.path.join(inst_1, cfg.bindir_rel.get())
+    endians = {m.build_cfg.get_endianness(path_prepend=bindir_1)
+               for m in cfg.multilibs.get() if m.libc is component}
+    makefile = Makefile(cfg.context, 'all')
+    for endian in endians:
+        makefile.add_target(endian)
+    makefile.add_deps('all', endians)
+    for endian in endians:
+        localedef_list = ['%s/testrun.sh' % objdir,
+                          '%s/locale/localedef' % objdir,
+                          '--%s-endian' % endian,
+                          '--no-archive']
+        localedef_cmd = ' '.join(localedef_list)
+        make_args = ['install_root=%s/%s' % (instdir, endian),
+                     'LOCALEDEF=%s' % localedef_cmd,
+                     'localedata/install-locales']
+        make_cmd = '$(MAKE) %s' % ' '.join([shlex.quote(s) for s in make_args])
+        make_cmd = ('cd %s && I18NPATH=%s/localedata %s'
+                    % (objdir, srcdir, make_cmd))
+        makefile.add_command(endian, make_cmd)
+    makefile_text = makefile.makefile_text()
+    makefile_name = os.path.join(objdir2, 'GNUmakefile')
+    with open(makefile_name, 'w', encoding='utf-8') as file:
+        file.write(makefile_text)
 
 
 class Component(sourcery.component.Component):
@@ -150,6 +214,46 @@ class Component(sourcery.component.Component):
     def add_build_tasks_for_first_host(cfg, host, component, host_group):
         _contribute_headers_tree(cfg, host, component, host_group, True)
         _contribute_shared_tree(cfg, host, component, host_group, True)
+        # Build glibc for the build system, and use its localedef to
+        # build locales.  The normal glibc configure options are not
+        # used for this (they may only be appropriate for the target),
+        # so the common support for autoconf-based components isn't
+        # used either.
+        host_b = host.build_cfg
+        srcdir = component.vars.srcdir.get()
+        objdir = cfg.objdir_path(host_b, 'glibc-host')
+        group = BuildTask(cfg, host_group, 'glibc-host')
+        init_task = BuildTask(cfg, group, 'init')
+        init_task.add_empty_dir(objdir)
+        cfg_task = BuildTask(cfg, group, 'configure')
+        cfg_cmd = [os.path.join(srcdir, 'configure'),
+                   '--build=%s' % host_b.triplet,
+                   '--host=%s' % host_b.triplet,
+                   '--prefix=/usr']
+        cfg_cmd.extend(host_b.configure_vars())
+        cfg_cmd.append('BUILD_CC=%s'
+                       % ' '.join(host_b.tool('c-compiler')))
+        cfg_task.add_command(cfg_cmd, cwd=objdir)
+        build_task = BuildTask(cfg, group, 'build')
+        build_task.add_make([], objdir)
+        group = BuildTask(cfg, host_group, 'glibc-locales')
+        group.depend('/%s/glibc-host' % host.name)
+        # Building the host glibc itself does not depend on the target
+        # compiler.  Building the locales does depend on the target
+        # compiler (but not on the target libc), as it is used to
+        # determine the endianness of each locale.
+        group.depend_install(host_b, 'toolchain-1')
+        group.provide_install(host_b, 'glibc-locales')
+        objdir2 = cfg.objdir_path(host_b, 'glibc-locales')
+        instdir = cfg.install_tree_path(host_b, 'glibc-locales')
+        init_task = BuildTask(cfg, group, 'init')
+        init_task.add_empty_dir(objdir2)
+        init_task.add_empty_dir(instdir)
+        build_task = BuildTask(cfg, group, 'build')
+        build_task.add_python(_generate_locales_makefile,
+                              (cfg, component, srcdir, objdir, objdir2,
+                               instdir))
+        build_task.add_make([], objdir2)
 
     @staticmethod
     def add_build_tasks_for_other_hosts(cfg, host, component, host_group):

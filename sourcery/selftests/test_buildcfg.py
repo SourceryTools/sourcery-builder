@@ -18,10 +18,15 @@
 
 """Test sourcery.buildcfg."""
 
+import os
+import stat
+import subprocess
+import tempfile
 import unittest
 
 from sourcery.buildcfg import BuildCfg
 from sourcery.context import ScriptError, ScriptContext
+from sourcery.selftests.support import create_files
 
 __all__ = ['BuildCfgTestCase']
 
@@ -33,6 +38,13 @@ class BuildCfgTestCase(unittest.TestCase):
     def setUp(self):
         """Set up a BuildCfg test."""
         self.context = ScriptContext()
+        self.tempdir_td = tempfile.TemporaryDirectory()
+        self.tempdir = self.tempdir_td.name
+        self.bindir = os.path.join(self.tempdir, 'bin')
+
+    def tearDown(self):
+        """Tear down a BuildCfg test."""
+        self.tempdir_td.cleanup()
 
     def test_init_attrs(self):
         """Test public attributes set by __init__."""
@@ -274,3 +286,60 @@ class BuildCfgTestCase(unittest.TestCase):
         self.assertRaisesRegex(ScriptError,
                                'contains non-shell-safe value',
                                cfg.configure_vars)
+
+    def test_run_tool(self):
+        """Test the run_tool method."""
+        cfg = BuildCfg(self.context, 'aarch64-linux-gnu', ccopts=['-mtest'])
+        create_files(self.bindir, ['bin2'],
+                     {'aarch64-linux-gnu-gcc':
+                      '#!/bin/sh\n'
+                      'echo gcc\n'
+                      'printf "%s\\n" "$@"\n',
+                      'aarch64-linux-gnu-as':
+                      '#!/bin/sh\n'
+                      'echo as\n'
+                      'printf "%s\\n" "$@"\n'
+                      'exit 1\n',
+                      'bin2/aarch64-linux-gnu-gcc':
+                      '#!/bin/sh\n'
+                      'echo gcc2\n'
+                      'printf "%s\\n" "$@"\n'},
+                     {})
+        os.chmod(os.path.join(self.bindir, 'aarch64-linux-gnu-gcc'),
+                 stat.S_IRWXU)
+        os.chmod(os.path.join(self.bindir, 'aarch64-linux-gnu-as'),
+                 stat.S_IRWXU)
+        os.chmod(os.path.join(self.bindir, 'bin2/aarch64-linux-gnu-gcc'),
+                 stat.S_IRWXU)
+        run_ret = cfg.run_tool('c-compiler', ['example', 'arg'],
+                               path_prepend=self.bindir, check=False)
+        self.assertEqual(run_ret.returncode, 0)
+        self.assertEqual(run_ret.stdout, 'gcc\n-mtest\nexample\narg\n')
+        self.assertEqual(run_ret.stderr, '')
+        run_ret = cfg.run_tool('c-compiler', ['example', 'arg'],
+                               path_prepend=self.bindir, check=True)
+        self.assertEqual(run_ret.returncode, 0)
+        self.assertEqual(run_ret.stdout, 'gcc\n-mtest\nexample\narg\n')
+        self.assertEqual(run_ret.stderr, '')
+        run_ret = cfg.run_tool('as', ['example', 'arg'],
+                               path_prepend=self.bindir, check=False)
+        self.assertEqual(run_ret.returncode, 1)
+        self.assertEqual(run_ret.stdout, 'as\nexample\narg\n')
+        self.assertEqual(run_ret.stderr, '')
+        self.assertRaises(subprocess.CalledProcessError,
+                          cfg.run_tool, 'as', ['example', 'arg'],
+                          path_prepend=self.bindir, check=True)
+        self.context.environ = dict(self.context.environ)
+        self.context.environ['PATH'] = '%s:%s' % (self.bindir,
+                                                  self.context.environ['PATH'])
+        run_ret = cfg.run_tool('c-compiler', ['example', 'arg'],
+                               path_prepend=None, check=False)
+        self.assertEqual(run_ret.returncode, 0)
+        self.assertEqual(run_ret.stdout, 'gcc\n-mtest\nexample\narg\n')
+        self.assertEqual(run_ret.stderr, '')
+        run_ret = cfg.run_tool('c-compiler', ['example', 'arg'],
+                               path_prepend=os.path.join(self.bindir, 'bin2'),
+                               check=False)
+        self.assertEqual(run_ret.returncode, 0)
+        self.assertEqual(run_ret.stdout, 'gcc2\n-mtest\nexample\narg\n')
+        self.assertEqual(run_ret.stderr, '')

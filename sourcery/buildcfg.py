@@ -20,6 +20,7 @@
 
 import re
 import shlex
+import subprocess
 
 __all__ = ['BuildCfg']
 
@@ -202,3 +203,24 @@ class BuildCfg:
                                        % (var, val_word))
             var_list.append('%s=%s' % (var, ' '.join(val)))
         return var_list
+
+    def run_tool(self, name, args, path_prepend=None, check=False):
+        """Run the specified tool, returning a CompletedProcess object.
+
+        The tool is run with the given arguments (a list or tuple).
+        If path_prepend is specified, it is a string to prepend to
+        PATH (with ':' added) for running the tool.  If check is true,
+        the tool is expected to return successfully.
+
+        """
+        if path_prepend is None:
+            new_env = self.context.environ
+        else:
+            new_env = dict(self.context.environ)
+            new_env['PATH'] = '%s:%s' % (path_prepend, new_env['PATH'])
+        tool_list = self.tool(name)
+        tool_list.extend(args)
+        return subprocess.run(tool_list, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              universal_newlines=True, env=new_env,
+                              check=check)

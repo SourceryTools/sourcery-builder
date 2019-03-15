@@ -22,8 +22,8 @@ import os.path
 
 from sourcery.autoconf import add_host_tool_cfg_build_tasks
 import sourcery.component
-from sourcery.fstree import FSTreeEmpty, FSTreeMove, FSTreeRemove, \
-    FSTreeExtract, FSTreeExtractOne, FSTreeUnion
+from sourcery.fstree import FSTreeEmpty, FSTreeSymlink, FSTreeMove, \
+    FSTreeRemove, FSTreeExtract, FSTreeExtractOne, FSTreeUnion
 from sourcery.relcfg import ConfigVarTypeList, ConfigVarTypeStrEnum
 
 __all__ = ['Component']
@@ -73,8 +73,37 @@ class Component(sourcery.component.Component):
         build = cfg.build.get()
         build_b = build.build_cfg
         target = cfg.target.get()
-        sysroot = cfg.sysroot.get()
-        sysroot_rel = cfg.sysroot_rel.get()
+        installdir = cfg.installdir.get()
+        installdir_rel = cfg.installdir_rel.get()
+        # If there are sysrooted multilibs, configure with the
+        # corresponding sysroot.  If there are non-sysrooted
+        # multilibs, also configure as sysrooted, so that
+        # --with-build-sysroot can be used to find headers and
+        # libraries when building the final GCC; in that case a usr ->
+        # . symlink must also be created.  A mixture of sysrooted and
+        # non-sysrooted multilibs is not permitted.
+        sysrooted = False
+        non_sysrooted = False
+        have_glibc_multilib = False
+        have_newlib_multilib = False
+        for multilib in cfg.multilibs.get():
+            if multilib.sysroot_suffix is None:
+                non_sysrooted = True
+            else:
+                sysrooted = True
+            if multilib.libc is not None:
+                if multilib.libc.orig_name == 'glibc':
+                    have_glibc_multilib = True
+                if multilib.libc.orig_name == 'newlib':
+                    have_newlib_multilib = True
+        if sysrooted and non_sysrooted:
+            cfg.context.error('both sysrooted and non-sysrooted multilibs')
+        if sysrooted:
+            sysroot = cfg.sysroot.get()
+            sysroot_rel = cfg.sysroot_rel.get()
+        else:
+            sysroot = os.path.join(installdir, target)
+            sysroot_rel = os.path.join(installdir_rel, target)
         bindir_rel = cfg.bindir_rel.get()
         inst_1_before = cfg.install_tree_path(build_b, 'toolchain-1-before')
         build_sysroot_1 = os.path.join(inst_1_before, sysroot_rel)
@@ -108,7 +137,7 @@ class Component(sourcery.component.Component):
                       '--disable-libmpx',
                       '--disable-libquadmath',
                       '--disable-libsanitizer']
-        if cfg.have_component('glibc'):
+        if have_glibc_multilib:
             glibc_version_h = os.path.join(cfg.glibc.srcdir.get(), 'version.h')
             glibc_version = None
             with open(glibc_version_h, 'r', encoding='utf-8') as file:
@@ -131,6 +160,8 @@ class Component(sourcery.component.Component):
                        '--with-sysroot=%s' % sysroot,
                        '--with-build-sysroot=%s' % build_sysroot_2,
                        '--with-build-time-tools=%s' % build_time_tools_2]
+        if have_newlib_multilib:
+            opts_second.append('--with-newlib')
         if host == build:
             group = add_host_tool_cfg_build_tasks(
                 cfg, host_b, component, host_group, name='gcc-first',
@@ -149,6 +180,15 @@ class Component(sourcery.component.Component):
             host_group.contribute_implicit_install(host_b, 'toolchain-1', tree)
             # The compiler is not needed in toolchain-2-before (which
             # is only used to build GCC for the build system).
+            # However, symlinks are needed in the non-sysrooted case
+            # to make use of --with-build-sysroot.
+            if not sysrooted:
+                tree_link = FSTreeSymlink(cfg.context, '.')
+                tree_link = FSTreeMove(tree_link, os.path.join(sysroot_rel,
+                                                               'usr'))
+                host_group.contribute_implicit_install(host_b,
+                                                       'toolchain-2-before',
+                                                       tree_link)
         make_target = None if host == build else 'all-host'
         install_target = 'install' if host == build else 'install-host'
         group = add_host_tool_cfg_build_tasks(
@@ -166,7 +206,6 @@ class Component(sourcery.component.Component):
         group.env_prepend('PATH', bindir_2)
         tree = cfg.install_tree_fstree(host_b, 'gcc')
         tree = FSTreeRemove(tree, [cfg.info_dir_rel.get()])
-        installdir_rel = cfg.installdir_rel.get()
         tree_build = cfg.install_tree_fstree(build_b, 'gcc')
         # Packaged sysroots are most convenient for users if they
         # contain all shared libraries that may be implicitly used by

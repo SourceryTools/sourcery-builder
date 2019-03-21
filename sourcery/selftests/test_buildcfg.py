@@ -344,6 +344,25 @@ class BuildCfgTestCase(unittest.TestCase):
         self.assertEqual(run_ret.stdout, 'gcc2\n-mtest\nexample\narg\n')
         self.assertEqual(run_ret.stderr, '')
 
+    def test_run_c_preprocess(self):
+        """Test the run_c_preprocess method."""
+        cfg = BuildCfg(self.context, 'aarch64-linux-gnu', tool_prefix='')
+        self.assertEqual(cfg.run_c_preprocess('#if 1\n2\n#else\n3\n#endif\n'),
+                         '2')
+        self.assertEqual(cfg.run_c_preprocess('#if 0\n2\n#else\n3\n#endif\n'),
+                         '3')
+        self.assertRaises(subprocess.CalledProcessError,
+                          cfg.run_c_preprocess, '#error "error"\n')
+        create_files(self.bindir, [],
+                     {'gcc':
+                      '#!/bin/sh\n'
+                      'exit 1'},
+                     {})
+        os.chmod(os.path.join(self.bindir, 'gcc'), stat.S_IRWXU)
+        self.assertRaises(subprocess.CalledProcessError,
+                          cfg.run_c_preprocess, 'test\n',
+                          path_prepend=self.bindir)
+
     def test_get_endianness(self):
         """Test the get_endianness method."""
         create_files(self.bindir, [],

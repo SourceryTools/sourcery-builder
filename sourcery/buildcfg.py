@@ -227,6 +227,16 @@ class BuildCfg:
                               universal_newlines=True, env=new_env,
                               check=check)
 
+    def run_c_preprocess(self, text, path_prepend=None):
+        """Run the C preprocessor on some text, returning the results."""
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_name = os.path.join(tempdir, 'preprocess.c')
+            with open(file_name, 'w', encoding='utf-8') as file:
+                file.write(text)
+            tool_out = self.run_tool('c-compiler', ['-E', '-P', file_name],
+                                     path_prepend=path_prepend, check=True)
+        return tool_out.stdout.strip()
+
     def get_endianness(self, path_prepend=None):
         """Determine the endianness of this BuildCfg ('big' or 'little').
 
@@ -235,19 +245,15 @@ class BuildCfg:
         __ORDER_LITTLE_ENDIAN__ built-in macros.
 
         """
-        with tempfile.TemporaryDirectory() as tempdir:
-            file_name = os.path.join(tempdir, 'endian.c')
-            with open(file_name, 'w', encoding='utf-8') as file:
-                file.write('#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__\n'
-                           'big\n'
-                           '#elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__\n'
-                           'little\n'
-                           '#else\n'
-                           '# error unknown endianness\n'
-                           '#endif\n')
-            tool_out = self.run_tool('c-compiler', ['-E', '-P', file_name],
-                                     path_prepend=path_prepend, check=True)
-        endian = tool_out.stdout.strip()
+        endian = self.run_c_preprocess(
+            '#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__\n'
+            'big\n'
+            '#elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__\n'
+            'little\n'
+            '#else\n'
+            '# error unknown endianness\n'
+            '#endif\n',
+            path_prepend=path_prepend)
         if endian not in ('big', 'little'):
             self.context.error('could not determine endianness: got %s'
                                % endian)

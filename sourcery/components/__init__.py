@@ -19,5 +19,5 @@
 """Sourcery Builder components package."""
 
 __all__ = ['binutils', 'expat', 'gcc', 'gdb', 'glibc', 'gmp', 'isl',
-           'libiconv', 'linux', 'mpc', 'mpfr', 'ncurses', 'newlib', 'package',
-           'release_configs', 'sourcery_builder', 'toolchain']
+           'libiconv', 'linux', 'mingw64', 'mpc', 'mpfr', 'ncurses', 'newlib',
+           'package', 'release_configs', 'sourcery_builder', 'toolchain']

@@ -44,9 +44,9 @@ class Multilib:
 
     """
 
-    def __init__(self, context, compiler, libc, ccopts, sysroot_suffix=None,
-                 headers_suffix=None, sysroot_osdir=None, osdir=None,
-                 target=None):
+    def __init__(self, context, compiler, libc, ccopts, tool_opts=None,
+                 sysroot_suffix=None, headers_suffix=None, sysroot_osdir=None,
+                 osdir=None, target=None):
         """Initialize a Multilib object.
 
         Initialization saves various information in the object; a
@@ -64,7 +64,9 @@ class Multilib:
         the system libraries for a native compiler); compiler
         libraries are still built in that case.  ccopts is a list or
         tuple of compiler options used to build code for this
-        multilib.  sysroot_suffix is a relative directory name for the
+        multilib.  tool_opts maps the names of tools to options to
+        pass to those tools, as in the corresponding BuildCfg
+        argument.  sysroot_suffix is a relative directory name for the
         sysroot subdirectory for this multilib, '.' for the top-level
         sysroot directory or None for non-sysrooted libc
         implementations; the same applies to headers_suffix; for
@@ -88,6 +90,14 @@ class Multilib:
             context.error('ccopts must be a list of strings, not a single '
                           'string')
         self.ccopts = tuple(ccopts)
+        if tool_opts is not None:
+            for val in tool_opts.values():
+                if isinstance(val, str):
+                    context.error('tool_opts values must be lists of '
+                                  'strings, not single strings')
+            tool_opts = {key: tuple(value)
+                         for key, value in tool_opts.items()}
+        self.tool_opts = tool_opts
         self._save_sysroot_suffix = sysroot_suffix
         self._save_headers_suffix = headers_suffix
         self._save_sysroot_osdir = sysroot_osdir
@@ -124,6 +134,11 @@ class Multilib:
         else:
             ml_args.append(repr(self.libc.copy_name))
         ml_args.append(repr(self.ccopts))
+        if self.tool_opts:
+            ml_args.append('tool_opts={%s}'
+                           % ', '.join('%s: %s' % (repr(key), repr(value))
+                                       for key, value in sorted(
+                                               self.tool_opts.items())))
         if self.sysroot_suffix is not None and (self.sysroot_suffix != '.'
                                                 or self.libc is None):
             ml_args.append('sysroot_suffix=%s' % repr(self.sysroot_suffix))
@@ -192,7 +207,8 @@ class Multilib:
                        else relcfg.target.get())
         tool_prefix = '%s-' % relcfg.target.get()
         self.build_cfg = BuildCfg(self.context, self.target,
-                                  tool_prefix=tool_prefix, ccopts=self.ccopts)
+                                  tool_prefix=tool_prefix, ccopts=self.ccopts,
+                                  tool_opts=self.tool_opts)
 
     def move_sysroot_executables(self, tree, dirs):
         """Move executables to a per-multilib directory such as usr/lib/bin.

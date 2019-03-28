@@ -54,9 +54,11 @@ class MultilibTestCase(unittest.TestCase):
         # Most public attributes are only set after finalization, so
         # not much can be tested here.
         multilib = Multilib(self.context, 'gcc', 'glibc', ('-mx', '-my'),
+                            tool_opts={'as': ('--64',)},
                             sysroot_suffix='foo', headers_suffix='foo2',
                             sysroot_osdir='os', osdir='os2', target='other')
         self.assertEqual(multilib.ccopts, ('-mx', '-my'))
+        self.assertEqual(multilib.tool_opts, {'as': ('--64',)})
         self.assertIsNone(multilib.compiler)
         self.assertIsNone(multilib.libc)
         self.assertIsNone(multilib.sysroot_suffix)
@@ -67,6 +69,11 @@ class MultilibTestCase(unittest.TestCase):
         self.assertIsNone(multilib.osdir)
         self.assertIsNone(multilib.target)
         self.assertIsNone(multilib.build_cfg)
+        multilib = Multilib(self.context, 'gcc', 'glibc', ('-mx', '-my'),
+                            tool_opts={'as': ['--64']},
+                            sysroot_suffix='foo', headers_suffix='foo2',
+                            sysroot_osdir='os', osdir='os2', target='other')
+        self.assertEqual(multilib.tool_opts, {'as': ('--64',)})
 
     def test_init_errors(self):
         """Test errors from __init__."""
@@ -74,6 +81,10 @@ class MultilibTestCase(unittest.TestCase):
                                'ccopts must be a list of strings',
                                Multilib, self.context, 'gcc', 'glibc',
                                '-msomething')
+        self.assertRaisesRegex(ScriptError,
+                               'tool_opts values must be lists of strings',
+                               Multilib, self.context, 'gcc', 'glibc',
+                               ('-msomething',), tool_opts={'as': '--64'})
 
     def test_repr(self):
         """Test __repr__."""
@@ -89,13 +100,15 @@ class MultilibTestCase(unittest.TestCase):
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         # Test sysrooted libc case, non-default settings for everything.
         multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
-                            ('-mx', '-my'), sysroot_suffix='foo',
-                            headers_suffix='foo2', sysroot_osdir='os',
-                            osdir='os2', target='other')
+                            ('-mx', '-my'), tool_opts={'ld': ['-a'],
+                                                       'as': ('-b',)},
+                            sysroot_suffix='foo', headers_suffix='foo2',
+                            sysroot_osdir='os', osdir='os2', target='other')
         multilib.finalize(relcfg)
         self.assertEqual(repr(multilib),
                          "Multilib('generic', 'sysrooted_libc', "
-                         "('-mx', '-my'), sysroot_suffix='foo', "
+                         "('-mx', '-my'), tool_opts={'as': ('-b',), "
+                         "'ld': ('-a',)}, sysroot_suffix='foo', "
                          "headers_suffix='foo2', sysroot_osdir='os', "
                          "osdir='os2', target='other')")
         # Test variants with some settings as defaults.
@@ -268,9 +281,9 @@ class MultilibTestCase(unittest.TestCase):
         relcfg = ReleaseConfig(self.context, relcfg_text, loader, self.args)
         # Test sysrooted libc case, non-default settings for everything.
         multilib = Multilib(self.context, 'generic', 'sysrooted_libc',
-                            ('-mx', '-my'), sysroot_suffix='foo',
-                            headers_suffix='foo2', sysroot_osdir='os',
-                            osdir='os2', target='other')
+                            ('-mx', '-my'), tool_opts={'as': ['--opt']},
+                            sysroot_suffix='foo', headers_suffix='foo2',
+                            sysroot_osdir='os', osdir='os2', target='other')
         multilib.finalize(relcfg)
         self.assertIs(multilib.compiler, relcfg.get_component('generic'))
         self.assertIs(multilib.libc, relcfg.get_component('sysrooted_libc'))
@@ -286,7 +299,8 @@ class MultilibTestCase(unittest.TestCase):
         self.assertIsInstance(multilib.build_cfg, BuildCfg)
         self.assertEqual(repr(multilib.build_cfg),
                          "BuildCfg('other', tool_prefix='aarch64-linux-gnu-', "
-                         "ccopts=('-mx', '-my'))")
+                         "ccopts=('-mx', '-my'), "
+                         "tool_opts={'as': ('--opt',)})")
         # Test sysrooted libc case, default settings.
         multilib = Multilib(self.context, 'generic', 'sysrooted_libc', ())
         multilib.finalize(relcfg)

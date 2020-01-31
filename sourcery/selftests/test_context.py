@@ -135,6 +135,7 @@ class ContextTestCase(unittest.TestCase):
 
     def test_init(self):
         """Test ScriptContext.__init__."""
+        # pylint: disable=import-outside-toplevel
         # We can't test more for most attributes than just repeating
         # the assignments in __init__ as assertions.
         self.assertEqual(self.context.orig_script_full,

@@ -391,11 +391,13 @@ class BuildContextTestCase(unittest.TestCase):
         pkg_0 = self.relcfg.pkgdir_path(hosts[0], '.tar.xz')
         pkg_1 = self.relcfg.pkgdir_path(hosts[1], '.tar.xz')
         dir_out = os.path.join(self.tempdir, 'toolchain-1.0')
-        subprocess.run(['tar', '-x', '-f', pkg_0], cwd=self.tempdir)
+        subprocess.run(['tar', '-x', '-f', pkg_0], cwd=self.tempdir,
+                       check=True)
         self.assertEqual(read_files(dir_out),
                          (set(), {}, {}))
         shutil.rmtree(dir_out)
-        subprocess.run(['tar', '-x', '-f', pkg_1], cwd=self.tempdir)
+        subprocess.run(['tar', '-x', '-f', pkg_1], cwd=self.tempdir,
+                       check=True)
         self.assertEqual(read_files(dir_out),
                          (set(), {}, {}))
 
@@ -519,7 +521,8 @@ class BuildContextTestCase(unittest.TestCase):
         pkg_0 = self.relcfg.pkgdir_path(hosts[0], '.tar.xz')
         pkg_1 = self.relcfg.pkgdir_path(hosts[1], '.tar.xz')
         dir_out = os.path.join(self.tempdir, 'toolchain-1.0')
-        subprocess.run(['tar', '-x', '-f', pkg_0], cwd=self.tempdir)
+        subprocess.run(['tar', '-x', '-f', pkg_0], cwd=self.tempdir,
+                       check=True)
         self.assertEqual(read_files(dir_out),
                          (set(),
                           {'a1': 'a\n', 'a2': 'a\n', 'a3': 'a\n', 'b': 'b\n'},
@@ -531,7 +534,8 @@ class BuildContextTestCase(unittest.TestCase):
         self.assertEqual(stat_b.st_nlink, 1)
         self.assertEqual(stat_b.st_mtime, 1111199990)
         shutil.rmtree(dir_out)
-        subprocess.run(['tar', '-x', '-f', pkg_1], cwd=self.tempdir)
+        subprocess.run(['tar', '-x', '-f', pkg_1], cwd=self.tempdir,
+                       check=True)
         self.assertEqual(read_files(dir_out),
                          (set(),
                           {'a1': 'a\n', 'a2': 'a\n', 'a3': 'a\n', 'b': 'b\n',
@@ -571,17 +575,21 @@ class BuildContextTestCase(unittest.TestCase):
                                'toolchain-1.0-1-aarch64-linux-gnu')
         dir_backup = os.path.join(self.tempdir,
                                   'toolchain-1.0-1-aarch64-linux-gnu.backup')
-        subprocess.run(['tar', '-x', '-f', pkg_src], cwd=self.tempdir)
+        subprocess.run(['tar', '-x', '-f', pkg_src], cwd=self.tempdir,
+                       check=True)
         self.assertEqual(os.listdir(dir_src), ['build_src_open-1.0-1.tar.xz'])
-        subprocess.run(['tar', '-x', '-f', pkg_backup], cwd=self.tempdir)
+        subprocess.run(['tar', '-x', '-f', pkg_backup], cwd=self.tempdir,
+                       check=True)
         self.assertEqual(os.listdir(dir_backup),
                          ['build_src_closed-1.0-1.tar.xz'])
         tar_open = os.path.join(dir_src, 'build_src_open-1.0-1.tar.xz')
         tar_closed = os.path.join(dir_backup, 'build_src_closed-1.0-1.tar.xz')
         self.assertEqual(os.stat(tar_open).st_mtime, 1111199990)
         self.assertEqual(os.stat(tar_closed).st_mtime, 1111199990)
-        subprocess.run(['tar', '-x', '-f', tar_open], cwd=self.tempdir)
-        subprocess.run(['tar', '-x', '-f', tar_closed], cwd=self.tempdir)
+        subprocess.run(['tar', '-x', '-f', tar_open], cwd=self.tempdir,
+                       check=True)
+        subprocess.run(['tar', '-x', '-f', tar_closed], cwd=self.tempdir,
+                       check=True)
         dir_open = os.path.join(self.tempdir, 'build_src_open-1.0-1')
         dir_closed = os.path.join(self.tempdir, 'build_src_closed-1.0-1')
         self.assertEqual(read_files(dir_open), (set(), {'x': 'x'}, {}))

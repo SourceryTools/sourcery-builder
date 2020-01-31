@@ -1,6 +1,6 @@
 # Initialize sourcery.selftests.extra.components package.
 
-# Copyright 2019 Mentor Graphics Corporation.
+# Copyright 2019-2020 Mentor Graphics Corporation.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as

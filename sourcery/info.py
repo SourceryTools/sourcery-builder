@@ -1,6 +1,6 @@
 # Report information about a release configuration.
 
-# Copyright 2018-2020 Mentor Graphics Corporation.
+# Copyright 2018-2021 Mentor Graphics Corporation.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as
